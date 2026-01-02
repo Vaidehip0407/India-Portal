@@ -21,15 +21,12 @@ const Layout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-green-50">
-      {/* Top Banner - Tiranga Style */}
-      <div className="h-1 bg-gradient-to-r from-orange-500 via-white to-green-600"></div>
-      
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white shadow-xl">
+      <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4">
           {/* Top Header */}
-          <div className="flex justify-between items-center py-2 text-xs border-b border-blue-700">
+          <div className="flex justify-between items-center py-2 text-xs border-b border-blue-500">
             <div className="flex items-center gap-4">
               <span>🇮🇳 Government of Gujarat</span>
               <span className="hidden md:inline">|</span>
@@ -48,7 +45,7 @@ const Layout = () => {
               {/* Mobile Menu Toggle */}
               <button 
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 hover:bg-blue-700 rounded"
+                className="lg:hidden p-2 hover:bg-blue-500 rounded"
               >
                 {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -56,7 +53,7 @@ const Layout = () => {
               {/* Logo & Title */}
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
-                  <Shield className="w-8 h-8 text-blue-800" />
+                  <Shield className="w-8 h-8 text-blue-600" />
                 </div>
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold tracking-wide">
@@ -70,7 +67,7 @@ const Layout = () => {
             {/* Right Side */}
             <div className="flex items-center gap-3">
               {/* Service Icons */}
-              <div className="hidden md:flex items-center gap-2 mr-4 px-4 py-2 bg-blue-700/50 rounded-lg">
+              <div className="hidden md:flex items-center gap-2 mr-4 px-4 py-2 bg-blue-500/50 rounded-lg">
                 <Zap className="w-5 h-5 text-yellow-400" title="Electricity" />
                 <Flame className="w-5 h-5 text-orange-400" title="Gas" />
                 <Droplets className="w-5 h-5 text-cyan-400" title="Water" />
@@ -78,7 +75,7 @@ const Layout = () => {
               </div>
 
               {/* Notifications */}
-              <button className="relative p-2 hover:bg-blue-700 rounded-full">
+              <button className="relative p-2 hover:bg-blue-500 rounded-full">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-0 right-0 w-2 h-2 bg-orange-500 rounded-full"></span>
               </button>
@@ -87,7 +84,7 @@ const Layout = () => {
               <div className="relative">
                 <button 
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-700 hover:bg-blue-600 rounded-lg transition"
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg transition"
                 >
                   <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center font-bold">
                     {user?.full_name?.charAt(0) || 'U'}
@@ -135,7 +132,7 @@ const Layout = () => {
         <aside className={`${sidebarOpen ? 'w-64' : 'w-0 lg:w-64'} bg-white shadow-xl min-h-[calc(100vh-140px)] transition-all duration-300 overflow-hidden`}>
           <nav className="p-4">
             {/* Quick Stats */}
-            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl border border-blue-100">
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
               <p className="text-xs text-gray-500 mb-1">Welcome back,</p>
               <p className="font-semibold text-blue-900">{user?.full_name || 'User'}</p>
               <p className="text-xs text-gray-500 mt-2">{user?.email}</p>
@@ -183,7 +180,7 @@ const Layout = () => {
       </div>
 
       {/* Footer */}
-      <footer className="bg-blue-900 text-white py-4">
+      <footer className="bg-blue-700 text-white py-4">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm">
           <p>© 2024 Unified Services Portal | Government of Gujarat</p>
           <p className="text-blue-300 text-xs mt-1">

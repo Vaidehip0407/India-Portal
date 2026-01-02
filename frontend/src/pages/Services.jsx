@@ -85,8 +85,8 @@ const Services = () => {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <p className="text-sm text-blue-800">
+      <div className="bg-gradient-to-r from-orange-100 to-green-100 border-l-4 border-orange-500 p-4 rounded-lg mb-6">
+        <p className="text-sm text-gray-800">
           <strong>How it works:</strong> Select a service category below, fill in your details, and submit your application. You can track the status in "My Applications".
         </p>
       </div>
@@ -98,36 +98,39 @@ const Services = () => {
           return (
             <div 
               key={service.id}
-              className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all"
+              className="bg-white rounded-lg shadow-lg border-t-4 border-orange-500 overflow-hidden hover:shadow-2xl hover:scale-105 transition-all group"
             >
               {/* Header */}
-              <div className={`bg-gradient-to-r ${service.gradient} p-6`}>
-                <div className="flex items-center gap-4">
-                  <div className="bg-white/25 backdrop-blur-sm p-3 rounded-xl">
+              <div className={`bg-gradient-to-r ${service.gradient} p-6 relative`}>
+                <div className="absolute top-0 right-0 w-20 h-20 opacity-10">
+                  <div className="w-full h-full border-4 border-white rounded-full"></div>
+                </div>
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="bg-white/25 p-3 rounded-lg border-2 border-white group-hover:bg-white/40 group-hover:scale-110 transition">
                     <Icon className="w-8 h-8 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-white">{service.name}</h2>
-                    <p className="text-white/80">{service.nameHindi}</p>
+                    <h2 className="text-2xl font-bold text-white group-hover:translate-x-1 transition">{service.name}</h2>
+                    <p className="text-white/90">{service.nameHindi}</p>
                   </div>
                 </div>
               </div>
 
               {/* Content */}
               <div className="p-6 space-y-4">
-                <p className="text-gray-600 text-sm">{service.description}</p>
+                <p className="text-gray-700 text-sm">{service.description}</p>
 
                 {/* Apply Button */}
                 <Link
                   to={`/${service.id}`}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg hover:scale-105 transition-all"
                 >
                   Apply Now <ArrowRight className="w-4 h-4" />
                 </Link>
 
                 {/* Official Portals */}
-                <div className="border-t pt-4">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                <div className="border-t border-gray-200 pt-4">
+                  <p className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2">
                     Official Portals
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -137,7 +140,7 @@ const Services = () => {
                         href={provider.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-1 transition-colors"
+                        className="text-xs px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 border border-orange-300 flex items-center gap-1 transition-all hover:scale-110"
                       >
                         {provider.name} <ExternalLink className="w-3 h-3" />
                       </a>
@@ -151,15 +154,15 @@ const Services = () => {
       </div>
 
       {/* Help Section */}
-      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white border-t-4 border-orange-500">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-bold">Need Help?</h3>
-            <p className="text-emerald-200 text-sm mt-1">
+            <p className="text-green-100 text-sm mt-1">
               Contact our support team for assistance
             </p>
           </div>
-          <button className="px-6 py-3 bg-white text-emerald-600 rounded-lg font-semibold hover:bg-emerald-50 transition-colors">
+          <button className="px-6 py-3 bg-white text-green-600 rounded-lg font-semibold hover:shadow-lg transition-all hover:scale-105">
             Get Support
           </button>
         </div>
