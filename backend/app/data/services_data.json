@@ -84,7 +84,70 @@
       "api_available": false,
       "online_available": true,
       "rpa_enabled": true,
-      "form_fields": ["consumer_number", "old_name", "new_name", "mobile", "email"]
+      "form_fields": [
+        {
+          "name": "consumer_number",
+          "label": "Consumer Number",
+          "label_hindi": "उपभोक्ता संख्या",
+          "type": "text",
+          "required": true,
+          "placeholder": "Enter your consumer number",
+          "validation": "^[0-9]{10,12}$"
+        },
+        {
+          "name": "old_name",
+          "label": "Current Name (as per bill)",
+          "label_hindi": "वर्तमान नाम",
+          "type": "text",
+          "required": true,
+          "placeholder": "Enter current name",
+          "ocr_field": "name"
+        },
+        {
+          "name": "new_name",
+          "label": "New Name",
+          "label_hindi": "नया नाम",
+          "type": "text",
+          "required": true,
+          "placeholder": "Enter new name"
+        },
+        {
+          "name": "mobile",
+          "label": "Mobile Number",
+          "label_hindi": "मोबाइल नंबर",
+          "type": "tel",
+          "required": true,
+          "placeholder": "Enter 10-digit mobile number",
+          "validation": "^[6-9][0-9]{9}$"
+        },
+        {
+          "name": "email",
+          "label": "Email Address",
+          "label_hindi": "ईमेल पता",
+          "type": "email",
+          "required": false,
+          "placeholder": "Enter email address"
+        },
+        {
+          "name": "address",
+          "label": "Address",
+          "label_hindi": "पता",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Enter complete address",
+          "ocr_field": "address"
+        },
+        {
+          "name": "aadhar_number",
+          "label": "Aadhar Number",
+          "label_hindi": "आधार नंबर",
+          "type": "text",
+          "required": true,
+          "placeholder": "Enter 12-digit Aadhar number",
+          "validation": "^[0-9]{12}$",
+          "ocr_field": "aadhar"
+        }
+      ]
     },
     {
       "id": "ugvcl",
