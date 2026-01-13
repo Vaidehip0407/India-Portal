@@ -295,29 +295,61 @@ class DGVCLNameChangeRPA:
 
 # Example usage with REAL DATA
 if __name__ == "__main__":
-    # ⚠️ REAL DATA - Use carefully
-    dgvcl_data = {
-        'mobile_number': '9870083162',  # Login mobile number
-        'discom': 'DGVCL',  # DISCOM selection
-        'consumer_no': '08267002294',
-        'new_name': 'PANCHAL SANJAY GANPATBHAI',  # Example new name
-        'reason': 'Name Correction',  # Or other reason from dropdown
-        'security_deposit_option': 'entire'  # or 'difference'
-    }
+    import json
     
-    print("\n⚠️  WARNING: PRODUCTION MODE")
-    print("✅ Will use REAL DGVCL account")
-    print("✅ Will ONLY fill Step 1")
-    print("❌ Will NOT submit application")
-    print("\nData to be used:")
-    print(f"  Mobile: {dgvcl_data['mobile_number']}")
-    print(f"  Consumer No: {dgvcl_data['consumer_no']}")
-    print(f"  New Name: {dgvcl_data['new_name']}")
-    
-    confirm = input("\n❓ Continue with REAL data? (yes/no): ")
-    
-    if confirm.lower() == 'yes':
-        rpa = DGVCLNameChangeRPA()
-        rpa.run(dgvcl_data)
+    # Check if data file provided as argument
+    if len(sys.argv) > 1:
+        # Read data from file (called by backend)
+        data_file = sys.argv[1]
+        try:
+            with open(data_file, 'r') as f:
+                dgvcl_data = json.load(f)
+            
+            print("\n✅ Data loaded from backend")
+            print(f"  Mobile: {dgvcl_data.get('mobile')}")
+            print(f"  Consumer No: {dgvcl_data.get('consumer_number')}")
+            print(f"  DISCOM: {dgvcl_data.get('discom', 'DGVCL')}")
+            
+            # Map backend data to RPA format
+            rpa_data = {
+                'mobile_number': dgvcl_data.get('mobile'),
+                'discom': dgvcl_data.get('discom', 'DGVCL'),
+                'consumer_no': dgvcl_data.get('consumer_number'),
+                'new_name': dgvcl_data.get('applicant_name', ''),
+                'reason': 'Name Correction',
+                'security_deposit_option': 'entire'
+            }
+            
+            rpa = DGVCLNameChangeRPA()
+            rpa.run(rpa_data)
+            
+        except Exception as e:
+            print(f"❌ Error loading data: {e}")
+            sys.exit(1)
     else:
-        print("❌ Cancelled - No action taken")
+        # Manual mode - use hardcoded data
+        dgvcl_data = {
+            'mobile_number': '9870083162',  # Login mobile number
+            'discom': 'DGVCL',  # DISCOM selection
+            'consumer_no': '08267002294',
+            'new_name': 'PANCHAL SANJAY GANPATBHAI',  # Example new name
+            'reason': 'Name Correction',  # Or other reason from dropdown
+            'security_deposit_option': 'entire'  # or 'difference'
+        }
+        
+        print("\n⚠️  WARNING: PRODUCTION MODE")
+        print("✅ Will use REAL DGVCL account")
+        print("✅ Will ONLY fill Step 1")
+        print("❌ Will NOT submit application")
+        print("\nData to be used:")
+        print(f"  Mobile: {dgvcl_data['mobile_number']}")
+        print(f"  Consumer No: {dgvcl_data['consumer_no']}")
+        print(f"  New Name: {dgvcl_data['new_name']}")
+        
+        confirm = input("\n❓ Continue with REAL data? (yes/no): ")
+        
+        if confirm.lower() == 'yes':
+            rpa = DGVCLNameChangeRPA()
+            rpa.run(dgvcl_data)
+        else:
+            print("❌ Cancelled - No action taken")
