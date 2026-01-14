@@ -1,90 +1,137 @@
-// Simple DGVCL Auto-Fill Extension
+// DGVCL Complete Auto-Fill Extension
 console.log('🚀 DGVCL Auto-Fill Extension Started');
 
 // Wait for page to load
 window.addEventListener('load', function() {
-  console.log('📄 Page loaded, checking URL...');
+  console.log('📄 Page loaded:', window.location.href);
   
   // Check if we're on DGVCL portal
   if (window.location.hostname === 'portal.guvnl.in') {
-    console.log('✅ On DGVCL portal');
     
-    // Get data from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const mobile = urlParams.get('mobile');
-    const discom = urlParams.get('discom');
+    // Detect which page we're on
+    const url = window.location.href;
     
-    console.log('📦 URL Data:', { mobile, discom });
+    // PAGE 1: Login Page (login.php)
+    if (url.includes('login.php')) {
+      console.log('📍 On Login Page');
+      handleLoginPage();
+    }
     
-    if (mobile && discom) {
-      console.log('✅ Data found, waiting 2 seconds for page elements...');
-      
-      // Wait 2 seconds for page to fully load
-      setTimeout(function() {
-        
-        // STEP 1: Find Mobile field - ONLY the one with placeholder "Mobile No"
-        console.log('🔍 Looking for Mobile No field...');
-        
-        // Use very specific selector - input with placeholder containing "Mobile"
-        // but NOT containing "Captcha"
-        const mobileField = document.querySelector('input[placeholder="Mobile No"]') ||
-                           document.querySelector('input[placeholder*="Mobile"]');
-        
-        if (mobileField) {
-          console.log('✅ Found Mobile No field');
-          
-          // Only fill if field is empty or has placeholder
-          mobileField.focus();
-          mobileField.value = mobile;
-          mobileField.dispatchEvent(new Event('input', { bubbles: true }));
-          mobileField.dispatchEvent(new Event('change', { bubbles: true }));
-          mobileField.style.backgroundColor = '#90EE90';
-          console.log('✅ Filled Mobile No:', mobile);
-          
-          setTimeout(function() {
-            mobileField.style.backgroundColor = '';
-          }, 3000);
-        } else {
-          console.error('❌ Mobile No field not found!');
-        }
-        
-        // STEP 2: Find DISCOM dropdown - ONLY select element
-        console.log('🔍 Looking for DISCOM dropdown...');
-        const discomDropdown = document.querySelector('select');
-        
-        if (discomDropdown) {
-          const options = discomDropdown.options;
-          for (let i = 0; i < options.length; i++) {
-            if (options[i].text.includes(discom) || options[i].value.includes(discom)) {
-              discomDropdown.selectedIndex = i;
-              discomDropdown.dispatchEvent(new Event('change', { bubbles: true }));
-              discomDropdown.style.backgroundColor = '#90EE90';
-              console.log('✅ Selected DISCOM:', discom);
-              
-              setTimeout(function() {
-                discomDropdown.style.backgroundColor = '';
-              }, 3000);
-              break;
-            }
-          }
-        }
-        
-        // DO NOT TOUCH CAPTCHA FIELD - Leave it empty for user to fill
-        console.log('ℹ️ Captcha field left empty for user');
-        
-        // Show success notification
-        const notification = document.createElement('div');
-        notification.style.cssText = 'position:fixed;top:20px;right:20px;background:#4CAF50;color:white;padding:15px 25px;border-radius:10px;font-size:16px;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
-        notification.textContent = '✅ Auto-filled: ' + mobile + ' / ' + discom;
-        document.body.appendChild(notification);
-        
-        setTimeout(function() {
-          notification.remove();
-        }, 5000);
-        
-      }, 2000);
+    // PAGE 2: OTP Page (checkOtp.php)
+    else if (url.includes('checkOtp.php')) {
+      console.log('📍 On OTP Page');
+      handleOTPPage();
+    }
+    
+    // PAGE 3: Select User Page (Submit_Otp.php)
+    else if (url.includes('Submit_Otp.php')) {
+      console.log('📍 On Select User Page');
+      handleSelectUserPage();
+    }
+    
+    // PAGE 4: Dashboard (prtlDashboard.php)
+    else if (url.includes('prtlDashboard.php')) {
+      console.log('📍 On Dashboard - SUCCESS!');
+      showNotification('✅ Login Successful! Welcome to DGVCL Dashboard');
     }
   }
 });
+
+// PAGE 1: Login Page Handler
+function handleLoginPage() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const mobile = urlParams.get('mobile');
+  const discom = urlParams.get('discom');
+  
+  console.log('📦 URL Data:', { mobile, discom });
+  
+  if (mobile && discom) {
+    setTimeout(function() {
+      // Fill Mobile No
+      const mobileField = document.querySelector('input[placeholder="Mobile No"]') ||
+                         document.querySelector('input[placeholder*="Mobile"]');
+      
+      if (mobileField) {
+        mobileField.value = mobile;
+        mobileField.dispatchEvent(new Event('input', { bubbles: true }));
+        mobileField.dispatchEvent(new Event('change', { bubbles: true }));
+        mobileField.style.backgroundColor = '#90EE90';
+        console.log('✅ Filled Mobile No:', mobile);
+      }
+      
+      // Fill DISCOM dropdown
+      const discomDropdown = document.querySelector('select');
+      if (discomDropdown) {
+        const options = discomDropdown.options;
+        for (let i = 0; i < options.length; i++) {
+          if (options[i].text.includes(discom) || options[i].value.includes(discom)) {
+            discomDropdown.selectedIndex = i;
+            discomDropdown.dispatchEvent(new Event('change', { bubbles: true }));
+            discomDropdown.style.backgroundColor = '#90EE90';
+            console.log('✅ Selected DISCOM:', discom);
+            break;
+          }
+        }
+      }
+      
+      showNotification('✅ Auto-filled! Enter Captcha & Click Login');
+      
+    }, 2000);
+  }
+}
+
+// PAGE 2: OTP Page Handler
+function handleOTPPage() {
+  console.log('📍 OTP Page - Waiting for user to enter OTP...');
+  showNotification('📱 Enter OTP and click Submit Otp');
+  
+  // Don't auto-click - user needs to enter OTP first
+  // Just show helpful message
+}
+
+// PAGE 3: Select User Page Handler
+function handleSelectUserPage() {
+  console.log('📍 Select User Page - Auto-clicking Submit...');
+  
+  setTimeout(function() {
+    // Find and click Submit button
+    const submitBtn = document.querySelector('input[type="submit"]') ||
+                     document.querySelector('button[type="submit"]') ||
+                     document.querySelector('input[value="Submit"]');
+    
+    if (submitBtn) {
+      console.log('✅ Found Submit button, clicking...');
+      showNotification('🔄 Auto-submitting...');
+      submitBtn.click();
+    } else {
+      console.log('❌ Submit button not found');
+      // Try to find any button with "Submit" text
+      const allButtons = document.querySelectorAll('input, button');
+      allButtons.forEach(function(btn) {
+        if (btn.value === 'Submit' || btn.textContent === 'Submit') {
+          console.log('✅ Found Submit button (alternative), clicking...');
+          btn.click();
+        }
+      });
+    }
+  }, 1500);
+}
+
+// Show notification
+function showNotification(message) {
+  // Remove existing notification
+  const existing = document.getElementById('dgvcl-notification');
+  if (existing) existing.remove();
+  
+  const notification = document.createElement('div');
+  notification.id = 'dgvcl-notification';
+  notification.style.cssText = 'position:fixed;top:20px;right:20px;background:#4CAF50;color:white;padding:15px 25px;border-radius:10px;font-size:16px;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  setTimeout(function() {
+    notification.remove();
+  }, 5000);
+}
 
 console.log('✅ Extension script loaded');
