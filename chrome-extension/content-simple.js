@@ -28,7 +28,7 @@ function runExtension() {
     setTimeout(handleDashboardPage, 2000);
   }
   // STEP 5: Name Change Form Page
-  else if (url.includes('ltNameChange.php')) {
+  else if (url.includes('ltNameChange.php') || url.includes('LTNameChange') || url.includes('namechange')) {
     setTimeout(handleNameChangeFormPage, 2000);
   }
 }
@@ -355,8 +355,29 @@ function handleNameChangeFormPage() {
     }
     
     if (filled > 0) {
-      showMsg(`✅ STEP 5: Auto-filled ${filled} fields!\n👉 Upload documents & Submit`, 'green');
+      showMsg(`✅ STEP 5: Auto-filled ${filled} fields!\n👉 Auto-submitting form...`, 'green');
       console.log(`✅ Filled ${filled} fields in Name Change form`);
+      
+      // Auto-click Submit button after filling form
+      setTimeout(() => {
+        const submitBtn = document.querySelector('input[value="Submit"]') ||
+                         document.querySelector('button[type="submit"]') ||
+                         document.querySelector('input[type="submit"]') ||
+                         document.querySelector('button:contains("Submit")') ||
+                         document.querySelector('.btn-submit') ||
+                         document.querySelector('[onclick*="submit"]');
+        
+        if (submitBtn) {
+          console.log('✅ Found Submit button, auto-clicking...');
+          showMsg('🤖 Auto-submitting Name Change form...', 'blue');
+          submitBtn.click();
+        } else {
+          console.log('❌ Submit button not found');
+          console.log('Available buttons:', document.querySelectorAll('button, input[type="submit"], input[type="button"]'));
+          showMsg('⚠️ Submit button not found\n👉 Please submit manually', 'orange');
+        }
+      }, 2000); // Wait 2 seconds after filling form
+      
     } else {
       showMsg('⚠️ Could not find form fields\n👉 Please fill manually', 'orange');
       
