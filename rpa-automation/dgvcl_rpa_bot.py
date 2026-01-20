@@ -40,6 +40,12 @@ class DGVCLRPABot:
         chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--disable-plugins")
         chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-web-security")
+        chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+        chrome_options.add_argument("--disable-background-timer-throttling")
+        chrome_options.add_argument("--disable-renderer-backgrounding")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+        chrome_options.add_argument("--remote-debugging-port=9222")
         
         try:
             # Try system ChromeDriver first
@@ -54,7 +60,10 @@ class DGVCLRPABot:
                 self.driver = webdriver.Chrome(service=service, options=chrome_options)
                 logger.info("✅ Chrome driver initialized with WebDriver Manager")
             
-            self.driver.implicitly_wait(10)
+            # Set longer timeouts
+            self.driver.implicitly_wait(15)
+            self.driver.set_page_load_timeout(60)
+            self.driver.set_script_timeout(30)
             return True
         except Exception as e:
             logger.error(f"❌ Failed to initialize Chrome driver: {e}")
@@ -80,48 +89,146 @@ class DGVCLRPABot:
             
             # Navigate to login page with parameters
             login_url = f"https://portal.guvnl.in/login.php?mobile={mobile}&discom={discom}"
-            self.driver.get(login_url)
+            logger.info(f"Navigating to: {login_url}")
             
-            # Wait for page to load
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
-            )
-            
-            # Fill mobile number
-            mobile_input = self.driver.find_element(By.XPATH, "//input[@placeholder='Mobile No']")
-            mobile_input.clear()
-            mobile_input.send_keys(mobile)
-            self.update_status("STEP 1", f"✅ Mobile number filled: {mobile}")
-            
-            # Select DISCOM
-            discom_select = Select(self.driver.find_element(By.TAG_NAME, "select"))
-            for option in discom_select.options:
-                if discom.upper() in option.text.upper():
-                    discom_select.select_by_visible_text(option.text)
+            # Use get with retry mechanism
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    self.driver.get(login_url)
                     break
-            self.update_status("STEP 1", f"✅ DISCOM selected: {discom}")
+                except Exception as e:
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}")
+                    if attempt == max_retries - 1:
+                        raise e
+                    time.sleep(5)
+            
+            # Wait for page to load with explicit wait
+            try:
+                WebDriverWait(self.driver, 30).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "body"))
+                )
+                self.update_status("STEP 1", "✅ Page loaded successfully")
+            except TimeoutException:
+                self.update_status("STEP 1", "⚠️ Page load timeout, continuing...")
+            
+            # Wait a bit more for dynamic content
+            time.sleep(3)
+            
+            # Fill mobile number with multiple selectors
+            mobile_selectors = [
+                "//input[@placeholder='Mobile No']",
+                "//input[contains(@placeholder, 'Mobile')]",
+                "//input[@name='mobile']",
+                "//input[@id='mobile']"
+            ]
+            
+            mobile_input = None
+            for selector in mobile_selectors:
+                try:
+                    mobile_input = WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, selector))
+                    )
+                    break
+                except TimeoutException:
+                    continue
+            
+            if mobile_input:
+                mobile_input.clear()
+                mobile_input.send_keys(mobile)
+                self.update_status("STEP 1", f"✅ Mobile number filled: {mobile}")
+            else:
+                self.update_status("STEP 1", "⚠️ Mobile field not found")
+            
+            # Select DISCOM with multiple attempts
+            try:
+                discom_select = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "select"))
+                )
+                select_obj = Select(discom_select)
+                
+                # Try to select by text
+                for option in select_obj.options:
+                    if discom.upper() in option.text.upper():
+                        select_obj.select_by_visible_text(option.text)
+                        self.update_status("STEP 1", f"✅ DISCOM selected: {discom}")
+                        break
+            except TimeoutException:
+                self.update_status("STEP 1", "⚠️ DISCOM dropdown not found")
             
             # Wait for manual captcha entry
             self.update_status("STEP 1", "⏳ Waiting for manual captcha entry...", "waiting")
             
-            # Monitor captcha field and auto-click login when filled
-            captcha_input = self.driver.find_element(By.XPATH, "//input[contains(@placeholder, 'Captcha') or contains(@placeholder, 'captcha')]")
+            # Look for captcha field
+            captcha_selectors = [
+                "//input[contains(@placeholder, 'Captcha')]",
+                "//input[contains(@placeholder, 'captcha')]",
+                "//input[@name='captcha']",
+                "//input[@id='captcha']"
+            ]
             
-            # Wait for captcha to be entered (polling)
-            while len(captcha_input.get_attribute('value')) < 4:
-                time.sleep(1)
+            captcha_input = None
+            for selector in captcha_selectors:
+                try:
+                    captcha_input = self.driver.find_element(By.XPATH, selector)
+                    break
+                except NoSuchElementException:
+                    continue
             
-            self.update_status("STEP 1", "✅ Captcha entered, clicking Login...")
-            
-            # Click login button
-            login_btn = self.driver.find_element(By.XPATH, "//input[@value='Login'] | //button[@type='submit']")
-            login_btn.click()
-            
-            self.update_status("STEP 1", "✅ Login button clicked, proceeding to OTP...")
-            return True
+            if captcha_input:
+                # Monitor captcha field and auto-click login when filled
+                self.update_status("STEP 1", "✅ Captcha field found, monitoring for input...")
+                
+                # Wait for captcha to be entered (polling with timeout)
+                captcha_timeout = 300  # 5 minutes
+                start_time = time.time()
+                
+                while time.time() - start_time < captcha_timeout:
+                    try:
+                        current_value = captcha_input.get_attribute('value')
+                        if current_value and len(current_value) >= 4:
+                            break
+                        time.sleep(2)
+                    except Exception as e:
+                        logger.warning(f"Error checking captcha: {e}")
+                        time.sleep(2)
+                
+                if time.time() - start_time >= captcha_timeout:
+                    self.update_status("STEP 1", "❌ Captcha timeout - no input detected", "error")
+                    return False
+                
+                self.update_status("STEP 1", "✅ Captcha entered, clicking Login...")
+                
+                # Click login button
+                login_selectors = [
+                    "//input[@value='Login']",
+                    "//button[@type='submit']",
+                    "//input[@type='submit']",
+                    "//button[contains(text(), 'Login')]"
+                ]
+                
+                login_btn = None
+                for selector in login_selectors:
+                    try:
+                        login_btn = self.driver.find_element(By.XPATH, selector)
+                        break
+                    except NoSuchElementException:
+                        continue
+                
+                if login_btn:
+                    login_btn.click()
+                    self.update_status("STEP 1", "✅ Login button clicked, proceeding to OTP...")
+                    return True
+                else:
+                    self.update_status("STEP 1", "❌ Login button not found", "error")
+                    return False
+            else:
+                self.update_status("STEP 1", "❌ Captcha field not found", "error")
+                return False
             
         except Exception as e:
             self.update_status("STEP 1", f"❌ Login failed: {str(e)}", "error")
+            logger.error(f"Login step failed: {e}")
             return False
     
     def step2_otp(self):
