@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Test</title>
+</head>
+<body>
+    <h2>Direct Login Test</h2>
+    <button onclick="testLogin()">Test Login</button>
+    <div id="result"></div>
+
+    <script>
+        async function testLogin() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                // Test 1: Direct backend
+                console.log('Testing direct backend...');
+                const formData = new FormData();
+                formData.append('username', 'test@example.com');
+                formData.append('password', 'test123');
+                
+                const response = await fetch('http://localhost:8000/api/auth/login', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<p style="color: green;">SUCCESS: Got token ${data.access_token.substring(0, 20)}...</p>`;
+                } else {
+                    const error = await response.text();
+                    resultDiv.innerHTML = `<p style="color: red;">FAILED: ${response.status} - ${error}</p>`;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">ERROR: ${error.message}</p>`;
+                
+                // Test 2: Through nginx proxy
+                try {
+                    console.log('Testing nginx proxy...');
+                    const formData2 = new FormData();
+                    formData2.append('username', 'test@example.com');
+                    formData2.append('password', 'test123');
+                    
+                    const response2 = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        body: formData2
+                    });
+                    
+                    if (response2.ok) {
+                        const data2 = await response2.json();
+                        resultDiv.innerHTML += `<p style="color: green;">NGINX SUCCESS: Got token ${data2.access_token.substring(0, 20)}...</p>`;
+                    } else {
+                        const error2 = await response2.text();
+                        resultDiv.innerHTML += `<p style="color: red;">NGINX FAILED: ${response2.status} - ${error2}</p>`;
+                    }
+                } catch (error2) {
+                    resultDiv.innerHTML += `<p style="color: red;">NGINX ERROR: ${error2.message}</p>`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

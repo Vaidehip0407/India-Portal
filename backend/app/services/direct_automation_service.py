@@ -569,4 +569,4 @@ Click OK to continue.`);
             pass
 
 # Global enhanced service instance
-enhanced_direct_automation_service = EnhancedDirectAutomationService()
+direct_automation_service = EnhancedDirectAutomationService()

@@ -16,14 +16,17 @@ const Login = () => {
     setError('');
     setLoading(true);
     
-    console.log('Sending login request:', { email, password });
+    console.log('Sending login request:', { email, password: '***' });
     
     const result = await login(email, password);
+    
+    console.log('Login result:', result);
     
     if (result.success) {
       navigate('/');
     } else {
       setError(result.error);
+      console.error('Login failed:', result.error);
     }
     setLoading(false);
   };
