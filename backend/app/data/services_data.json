@@ -12,7 +12,9 @@
       "rpa_enabled": true,
       "login_required": false,
       "direct_access": true,
-      "automation_type": "direct",
+      "automation_type": "direct_form",
+      "form_type": "web_form",
+      "reality_check": "Direct service request opens without login (verified)",
       "form_fields": [
         {
           "name": "consumer_number",
@@ -23,7 +25,20 @@
           "required": true,
           "placeholder": "Enter Gujarat Gas consumer number",
           "validation": "^[A-Z0-9]{8,12}$",
-          "selenium_selector": "input[name='consumer_no']"
+          "selenium_selector": "input[name='txtConsumerNo']"
+        },
+        {
+          "name": "service_type",
+          "label": "Service Type",
+          "label_hindi": "सेवा प्रकार",
+          "label_gujarati": "સેવા પ્રકાર",
+          "type": "select",
+          "required": true,
+          "options": [
+            {"value": "name_change", "label": "Name Change", "label_hindi": "नाम परिवर्तन", "label_gujarati": "નામ બદલાવ"},
+            {"value": "address_change", "label": "Address Change", "label_hindi": "पता परिवर्तन", "label_gujarati": "સરનામું બદલાવ"}
+          ],
+          "selenium_selector": "select[name='ddlServiceType']"
         },
         {
           "name": "old_name",
@@ -34,7 +49,7 @@
           "required": true,
           "placeholder": "Enter current name as per gas bill",
           "ocr_field": "name",
-          "selenium_selector": "input[name='current_name']"
+          "selenium_selector": "input[name='txtCurrentName']"
         },
         {
           "name": "new_name",
@@ -44,7 +59,7 @@
           "type": "text",
           "required": true,
           "placeholder": "Enter new name",
-          "selenium_selector": "input[name='new_name']"
+          "selenium_selector": "input[name='txtNewName']"
         },
         {
           "name": "mobile",
@@ -55,7 +70,7 @@
           "required": true,
           "placeholder": "Enter 10-digit mobile number",
           "validation": "^[6-9][0-9]{9}$",
-          "selenium_selector": "input[name='mobile']"
+          "selenium_selector": "input[name='txtMobile']"
         },
         {
           "name": "email",
@@ -65,18 +80,18 @@
           "type": "email",
           "required": false,
           "placeholder": "Enter email address",
-          "selenium_selector": "input[name='email']"
+          "selenium_selector": "input[name='txtEmail']"
         },
         {
           "name": "address",
-          "label": "Address",
-          "label_hindi": "पता",
-          "label_gujarati": "સરનામું",
+          "label": "Service Address",
+          "label_hindi": "सेवा पता",
+          "label_gujarati": "સેવા સરનામું",
           "type": "textarea",
           "required": true,
-          "placeholder": "Enter complete address",
+          "placeholder": "Enter complete service address",
           "ocr_field": "address",
-          "selenium_selector": "textarea[name='address']"
+          "selenium_selector": "textarea[name='txtAddress']"
         },
         {
           "name": "reason",
@@ -91,7 +106,23 @@
             {"value": "legal", "label": "Legal Name Change", "label_hindi": "कानूनी नाम परिवर्तन", "label_gujarati": "કાનૂની નામ બદલાવ"},
             {"value": "other", "label": "Other", "label_hindi": "अन्य", "label_gujarati": "અન્ય"}
           ],
-          "selenium_selector": "select[name='reason']"
+          "selenium_selector": "select[name='ddlReason']"
+        },
+        {
+          "name": "city",
+          "label": "City",
+          "label_hindi": "शहर",
+          "label_gujarati": "શહેર",
+          "type": "select",
+          "required": true,
+          "options": [
+            {"value": "ahmedabad", "label": "Ahmedabad", "label_gujarati": "અમદાવાદ"},
+            {"value": "gandhinagar", "label": "Gandhinagar", "label_gujarati": "ગાંધીનગર"},
+            {"value": "surat", "label": "Surat", "label_gujarati": "સુરત"},
+            {"value": "vadodara", "label": "Vadodara", "label_gujarati": "વડોદરા"},
+            {"value": "rajkot", "label": "Rajkot", "label_gujarati": "રાજકોટ"}
+          ],
+          "selenium_selector": "select[name='ddlCity']"
         }
       ]
     },
@@ -461,8 +492,9 @@
       "rpa_enabled": true,
       "login_required": false,
       "direct_access": true,
-      "automation_type": "direct",
+      "automation_type": "pdf_form",
       "form_type": "pdf_download",
+      "reality_check": "PDF form without login (portal optional)",
       "form_fields": [
         {
           "name": "consumer_number",
@@ -484,6 +516,16 @@
           "required": false,
           "placeholder": "Enter service number if available",
           "selenium_selector": "input[name='service_no']"
+        },
+        {
+          "name": "t_no",
+          "label": "T Number",
+          "label_hindi": "टी नंबर",
+          "label_gujarati": "ટી નંબર",
+          "type": "text",
+          "required": false,
+          "placeholder": "Enter T number if available",
+          "selenium_selector": "input[name='t_no']"
         },
         {
           "name": "old_name",
@@ -553,6 +595,22 @@
             {"value": "agra", "label": "Agra", "label_gujarati": "આગ્રા"}
           ],
           "selenium_selector": "select[name='city']"
+        },
+        {
+          "name": "reason",
+          "label": "Reason for Name Change",
+          "label_hindi": "नाम परिवर्तन का कारण",
+          "label_gujarati": "નામ બદલવાનું કારણ",
+          "type": "select",
+          "required": true,
+          "options": [
+            {"value": "marriage", "label": "Marriage", "label_hindi": "विवाह", "label_gujarati": "લગ્ન"},
+            {"value": "divorce", "label": "Divorce", "label_hindi": "तलाक", "label_gujarati": "છૂટાછેડા"},
+            {"value": "legal", "label": "Legal Name Change", "label_hindi": "कानूनी नाम परिवर्तन", "label_gujarati": "કાનૂની નામ બદલાવ"},
+            {"value": "death", "label": "Death of Family Member", "label_hindi": "परिवार के सदस्य की मृत्यु", "label_gujarati": "પરિવારના સભ્યનું મૃત્યુ"},
+            {"value": "other", "label": "Other", "label_hindi": "अन्य", "label_gujarati": "અન્ય"}
+          ],
+          "selenium_selector": "select[name='reason']"
         }
       ]
     }
@@ -563,17 +621,19 @@
       "name": "Gujarat Water Supply (GWSSB)",
       "type": "government",
       "portal_url": "https://watersupply.gujarat.gov.in",
-      "name_change_url": "https://watersupply.gujarat.gov.in/contact",
-      "address_change_url": "https://watersupply.gujarat.gov.in/contact",
+      "name_change_url": "https://watersupply.gujarat.gov.in/forms",
+      "address_change_url": "https://watersupply.gujarat.gov.in/forms",
       "api_available": false,
       "online_available": true,
       "rpa_enabled": true,
       "login_required": false,
       "direct_access": true,
-      "automation_type": "direct",
+      "automation_type": "web_form",
+      "form_type": "forms_page",
+      "reality_check": "Forms page opens (no login)",
       "form_fields": [
         {
-          "name": "consumer_number",
+          "name": "consumer_id",
           "label": "Consumer ID / Connection Number",
           "label_hindi": "उपभोक्ता आईडी / कनेक्शन संख्या",
           "label_gujarati": "ગ્રાહક આઈડી / કનેક્શન નંબર",
@@ -633,6 +693,16 @@
           "selenium_selector": "input[name='mobile']"
         },
         {
+          "name": "email",
+          "label": "Email Address",
+          "label_hindi": "ईमेल पता",
+          "label_gujarati": "ઇમેઇલ સરનામું",
+          "type": "email",
+          "required": false,
+          "placeholder": "Enter email address",
+          "selenium_selector": "input[name='email']"
+        },
+        {
           "name": "address",
           "label": "Service Address",
           "label_hindi": "सेवा पता",
@@ -656,6 +726,22 @@
             {"value": "industrial", "label": "Industrial", "label_hindi": "औद्योगिक", "label_gujarati": "ઔદ્યોગિક"}
           ],
           "selenium_selector": "select[name='connection_type']"
+        },
+        {
+          "name": "reason",
+          "label": "Reason for Name Change",
+          "label_hindi": "नाम परिवर्तन का कारण",
+          "label_gujarati": "નામ બદલવાનું કારણ",
+          "type": "select",
+          "required": true,
+          "options": [
+            {"value": "marriage", "label": "Marriage", "label_hindi": "विवाह", "label_gujarati": "લગ્ન"},
+            {"value": "divorce", "label": "Divorce", "label_hindi": "तलाक", "label_gujarati": "છૂટાછેડા"},
+            {"value": "legal", "label": "Legal Name Change", "label_hindi": "कानूनी नाम परिवर्तन", "label_gujarati": "કાનૂની નામ બદલાવ"},
+            {"value": "death", "label": "Death of Family Member", "label_hindi": "परिवार के सदस्य की मृत्यु", "label_gujarati": "પરિવારના સભ્યનું મૃત્યુ"},
+            {"value": "other", "label": "Other", "label_hindi": "अन्य", "label_gujarati": "અન્ય"}
+          ],
+          "selenium_selector": "select[name='reason']"
         }
       ]
     },
