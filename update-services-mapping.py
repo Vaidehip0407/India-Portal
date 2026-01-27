@@ -542,10 +542,4 @@ def update_services_data():
             field_count = len(service.get('form_fields', []))
             automation_type = service.get('automation_type', 'unknown')
             print(f"  ✅ {service['name']} - {field_count} fields ({automation_type})")
-    
-    print(f"\n🎯 Total Direct Access Services: {total_services}")
-    
-    return updated_data
-
-if __name__ == "__main__":
-    update_services_data()
+ 
