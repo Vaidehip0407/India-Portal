@@ -80,7 +80,7 @@ const NameChangeForm = () => {
 
       await api.post(`/applications/${appResponse.data.id}/submit`);
 
-      // Special handling for Torrent Power - Direct RPA automation
+      // Special handling for Torrent Power - RPA automation
       if (selectedSupplier.id === 'torrent_power') {
         try {
           // Call Torrent Power RPA automation
@@ -101,41 +101,26 @@ const NameChangeForm = () => {
 
           if (rpaResponse.data.success) {
             setStep(3);
-            setMessage(`✅ Torrent Power automation completed! ${rpaResponse.data.message}`);
+            setMessage(`✅ Torrent Power RPA automation completed! ${rpaResponse.data.message}`);
           } else {
-            // If RPA fails, fallback to manual process
+            // If RPA fails, open Torrent Power website directly
             window.open('https://connect.torrentpower.com/tplcp/application/namechangerequest', '_blank');
             setStep(3);
-            setMessage(`Application saved! Please complete the process manually on Torrent Power website.`);
+            setMessage(`Application saved! RPA failed, please complete manually on Torrent Power website.`);
           }
         } catch (rpaError) {
-          // If RPA fails, fallback to manual process
+          // If RPA fails, open Torrent Power website directly
           window.open('https://connect.torrentpower.com/tplcp/application/namechangerequest', '_blank');
           setStep(3);
-          setMessage(`Application saved! Please complete the process manually on Torrent Power website.`);
+          setMessage(`Application saved! RPA error, please complete manually on Torrent Power website.`);
         }
       } else {
-        // For other suppliers, use existing logic
-        localStorage.setItem('dgvcl_autofill_data', JSON.stringify({
-          application_type: 'name_change',
-          mobile: formData.mobile,
-          consumer_number: formData.consumer_number || formData.service_number,
-          provider: selectedSupplier.name,
-          new_name: formData.new_name,
-          reason: formData.reason,
-          security_deposit_option: formData.security_deposit_option,
-          old_security_deposit: formData.old_security_deposit,
-          applicant_name: formData.applicant_name,
-          email: formData.email,
-          timestamp: Date.now()
-        }));
-
-        // Open DGVCL portal with extension auto-fill
-        const portalUrl = `https://portal.guvnl.in/login.php?mobile=${formData.mobile}&discom=${selectedSupplier.name}`;
-        window.open(portalUrl, '_blank');
+        // For ALL other suppliers, redirect to their official websites
+        const supplierPortalUrl = selectedSupplier.nameChangeUrl || selectedSupplier.portal;
+        window.open(supplierPortalUrl, '_blank');
         
         setStep(3);
-        setMessage(`Application submitted! Tracking ID: ${appResponse.data.tracking_id}`);
+        setMessage(`Application saved! Redirected to ${selectedSupplier.name} official website.`);
       }
       
     } catch (error) {
@@ -484,12 +469,12 @@ const NameChangeForm = () => {
                     : selectedSupplier.fields
                   ).map(field => renderFieldInput(field))}
 
-                  <div className={`${selectedSupplier.id === 'torrent_power' ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'} border rounded-lg p-4 mt-6`}>
-                    <p className={`text-sm ${selectedSupplier.id === 'torrent_power' ? 'text-orange-800' : 'text-green-800'}`}>
+                  <div className={`${selectedSupplier.id === 'torrent_power' ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'} border rounded-lg p-4 mt-6`}>
+                    <p className={`text-sm ${selectedSupplier.id === 'torrent_power' ? 'text-orange-800' : 'text-blue-800'}`}>
                       {selectedSupplier.id === 'torrent_power' ? (
                         <>🤖 <strong>RPA Automation:</strong> After clicking submit, our system will automatically login to your Torrent Power account, navigate to name change form, and fill all details. You only need to review and submit.</>
                       ) : (
-                        <>✅ <strong>Extension Auto-Fill:</strong> After clicking submit, the {selectedSupplier.name} portal will open and your Chrome extension will automatically fill the form. You only need to enter Captcha and OTP.</>
+                        <>🔗 <strong>Direct Redirect:</strong> After clicking submit, you will be redirected to the official {selectedSupplier.name} website. Please login and complete the name change process manually.</>
                       )}
                     </p>
                   </div>
@@ -627,14 +612,13 @@ const NameChangeForm = () => {
               </div>
             ) : (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-left">
-                <p className="font-semibold text-blue-800 mb-2">Next Steps:</p>
+                <p className="font-semibold text-blue-800 mb-2">Redirected to {selectedSupplier.name} Official Website:</p>
                 <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-                  <li>Login form will be auto-filled with your mobile & {selectedSupplier.name}</li>
-                  <li>Enter Captcha and click Login</li>
-                  <li>Enter OTP sent to your mobile</li>
-                  <li>Navigate to "LT Name Change" section</li>
-                  <li>Form will be auto-filled with your details</li>
-                  <li>Submit the form to complete the process</li>
+                  <li>Official {selectedSupplier.name} website has opened</li>
+                  <li>Login with your account credentials</li>
+                  <li>Navigate to name change section</li>
+                  <li>Fill the form with your details manually</li>
+                  <li>Submit the application</li>
                 </ol>
               </div>
             )}
