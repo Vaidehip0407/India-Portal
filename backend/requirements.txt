@@ -1,6 +1,6 @@
-fastapi==0.109.0
+fastapi==0.115.0
 uvicorn==0.27.0
-starlette==0.35.0
+starlette==0.40.0
 sqlalchemy==2.0.23
 python-multipart==0.0.6
 python-jose[cryptography]==3.3.0
@@ -19,3 +19,7 @@ fake-useragent==1.4.0
 email-validator==2.1.0
 httpx==0.25.0
 python-dotenv==1.0.0
+
+# Browser automation - compatible versions
+openai==1.54.0
+playwright==1.40.0
