@@ -7,8 +7,8 @@ const getApiBaseUrl = () => {
     return 'http://localhost:8000/api';
   }
   
-  // Production EC2 URL
-  return 'http://50.19.189.29:8000/api';
+  // Production EC2 URL - Updated IP
+  return 'http://3.88.187.173:8000/api';
 };
 
 const api = axios.create({
