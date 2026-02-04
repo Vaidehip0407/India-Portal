@@ -1,17 +1,18 @@
 """
-Simple RPA Service - Windows Localhost Version
+Simple RPA Service - Windows EC2 Production Version
 """
 
 import time
 import os
 import logging
 import platform
+import subprocess
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as ECaxia
+from selenium.webdriver.support import expected_conditions as EC
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -23,91 +24,181 @@ class SimpleTorrentRPA:
         self.wait = None
         
     def setup_driver(self):
-        """Windows localhost Chrome setup"""
+        """Windows EC2 Chrome setup with robust error handling"""
         try:
-            logger.info("🚀 Setting up Chrome driver for Windows localhost...")
+            logger.info("🚀 Setting up Chrome driver for Windows EC2...")
             
-            # Detect Windows environment
+            # Detect environment
             is_windows = platform.system() == 'Windows'
-            logger.info(f"🔍 Platform detected: {platform.system()}")
+            is_ec2 = os.environ.get('AWS_EXECUTION_ENV') or 'ec2' in platform.node().lower()
             
-            # Chrome options for localhost (visible browser)
+            logger.info(f"🔍 Platform: {platform.system()}")
+            logger.info(f"🔍 Node: {platform.node()}")
+            logger.info(f"🔍 EC2 Environment: {is_ec2}")
+            
+            # Chrome options for Windows EC2
             options = Options()
             
-            if is_windows:
-                # Windows localhost - visible browser for debugging
-                options.add_argument("--start-maximized")
-                options.add_argument("--disable-notifications")
-                options.add_argument("--disable-popup-blocking")
-                logger.info("💻 Using Windows localhost options (visible browser)")
-            else:
-                # Fallback for other systems
-                options.add_argument("--headless")
-                options.add_argument("--no-sandbox")
-                options.add_argument("--disable-dev-shm-usage")
-                logger.info("🐧 Using headless options for non-Windows")
-            
-            # Common options
+            # Essential options for Windows EC2
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--disable-gpu")
-            options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-extensions")
+            options.add_argument("--window-size=1920,1080")
+            options.add_argument("--start-maximized")
+            options.add_argument("--disable-notifications")
+            options.add_argument("--disable-popup-blocking")
+            options.add_argument("--disable-translate")
+            options.add_argument("--disable-features=TranslateUI")
+            options.add_argument("--disable-background-timer-throttling")
+            options.add_argument("--disable-backgrounding-occluded-windows")
+            options.add_argument("--disable-renderer-backgrounding")
             options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             
-            # Try webdriver-manager first (best for localhost)
+            # For Windows EC2 - visible browser for RPA
+            if is_windows:
+                logger.info("💻 Using Windows EC2 visible browser mode")
+                # Don't add headless for Windows EC2 - we want visible browser
+            else:
+                options.add_argument("--headless")
+                logger.info("🐧 Using headless mode for non-Windows")
+            
+            # Try to find Chrome installation
+            chrome_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                r"C:\Users\Administrator\AppData\Local\Google\Chrome\Application\chrome.exe"
+            ]
+            
+            chrome_binary = None
+            for path in chrome_paths:
+                if os.path.exists(path):
+                    chrome_binary = path
+                    logger.info(f"✅ Found Chrome at: {chrome_binary}")
+                    break
+            
+            if chrome_binary:
+                options.binary_location = chrome_binary
+            else:
+                logger.warning("⚠️ Chrome binary not found in standard locations")
+            
+            # Try different driver setup methods
+            driver_setup_success = False
+            last_error = None
+            
+            # Method 1: Try webdriver-manager
             try:
-                logger.info("🔧 Trying webdriver-manager...")
+                logger.info("🔧 Method 1: Trying webdriver-manager...")
                 from webdriver_manager.chrome import ChromeDriverManager
                 
                 driver_path = ChromeDriverManager().install()
-                logger.info(f"✅ ChromeDriver installed at: {driver_path}")
+                logger.info(f"✅ ChromeDriver path: {driver_path}")
                 
-                # Fix webdriver-manager path issue on Windows
-                if 'THIRD_PARTY_NOTICES' in driver_path or not driver_path.endswith('.exe'):
-                    # Extract the correct directory and find the actual chromedriver binary
-                    driver_dir = os.path.dirname(driver_path)
+                # Fix webdriver-manager path issues on Windows
+                if driver_path and os.path.exists(driver_path):
+                    service = Service(driver_path)
+                    self.driver = webdriver.Chrome(service=service, options=options)
+                    driver_setup_success = True
+                    logger.info("✅ Chrome driver setup successful with webdriver-manager")
+                
+            except Exception as e:
+                last_error = e
+                logger.warning(f"⚠️ webdriver-manager failed: {e}")
+            
+            # Method 2: Try system Chrome with automatic driver download
+            if not driver_setup_success:
+                try:
+                    logger.info("🔧 Method 2: Trying system Chrome with auto driver...")
+                    self.driver = webdriver.Chrome(options=options)
+                    driver_setup_success = True
+                    logger.info("✅ Chrome driver setup successful with system Chrome")
                     
-                    # Look for the actual chromedriver binary
-                    possible_paths = [
-                        os.path.join(driver_dir, 'chromedriver.exe'),
-                        os.path.join(driver_dir, 'chromedriver-win32', 'chromedriver.exe'),
-                        os.path.join(os.path.dirname(driver_dir), 'chromedriver.exe'),
-                    ]
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"⚠️ System Chrome failed: {e}")
+            
+            # Method 3: Try to download and setup ChromeDriver manually
+            if not driver_setup_success:
+                try:
+                    logger.info("🔧 Method 3: Trying manual ChromeDriver setup...")
                     
-                    for possible_path in possible_paths:
-                        if os.path.exists(possible_path):
-                            driver_path = possible_path
-                            logger.info(f"🔧 Fixed ChromeDriver path: {driver_path}")
-                            break
-                    else:
-                        # Search for any chromedriver.exe file in the directory tree
-                        for root, dirs, files in os.walk(os.path.dirname(driver_dir)):
-                            for file in files:
-                                if file == 'chromedriver.exe':
-                                    driver_path = os.path.join(root, file)
-                                    logger.info(f"🔧 Found ChromeDriver binary: {driver_path}")
-                                    break
-                            if driver_path.endswith('.exe'):
-                                break
+                    # Get Chrome version
+                    chrome_version = self.get_chrome_version()
+                    if chrome_version:
+                        logger.info(f"🔍 Chrome version: {chrome_version}")
+                        
+                        # Download matching ChromeDriver
+                        driver_path = self.download_chromedriver(chrome_version)
+                        if driver_path and os.path.exists(driver_path):
+                            service = Service(driver_path)
+                            self.driver = webdriver.Chrome(service=service, options=options)
+                            driver_setup_success = True
+                            logger.info("✅ Chrome driver setup successful with manual download")
+                    
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"⚠️ Manual ChromeDriver setup failed: {e}")
+            
+            # Method 4: Try with minimal options
+            if not driver_setup_success:
+                try:
+                    logger.info("🔧 Method 4: Trying with minimal Chrome options...")
+                    
+                    minimal_options = Options()
+                    minimal_options.add_argument("--no-sandbox")
+                    minimal_options.add_argument("--disable-dev-shm-usage")
+                    
+                    if chrome_binary:
+                        minimal_options.binary_location = chrome_binary
+                    
+                    self.driver = webdriver.Chrome(options=minimal_options)
+                    driver_setup_success = True
+                    logger.info("✅ Chrome driver setup successful with minimal options")
+                    
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"⚠️ Minimal options failed: {e}")
+            
+            if not driver_setup_success:
+                logger.error("❌ All ChromeDriver setup methods failed")
+                logger.error(f"❌ Last error: {last_error}")
                 
-                service = Service(driver_path)
-                self.driver = webdriver.Chrome(service=service, options=options)
-                logger.info("✅ Chrome driver setup successful with webdriver-manager")
+                # Provide detailed troubleshooting info
+                logger.error("🔍 Troubleshooting information:")
+                logger.error(f"   - Chrome binary found: {chrome_binary is not None}")
+                logger.error(f"   - Chrome binary path: {chrome_binary}")
+                logger.error(f"   - Platform: {platform.system()}")
+                logger.error(f"   - Python version: {platform.python_version()}")
                 
-            except ImportError:
-                logger.info("⚠️ webdriver-manager not available, trying system Chrome...")
-                # Fallback to system Chrome
-                self.driver = webdriver.Chrome(options=options)
-                logger.info("✅ Chrome driver setup successful with system Chrome")
+                return False
             
             # Set timeouts
-            self.driver.implicitly_wait(10)
-            self.driver.set_page_load_timeout(30)
-            self.wait = WebDriverWait(self.driver, 20)
+            self.driver.implicitly_wait(15)  # Increased for EC2
+            self.driver.set_page_load_timeout(90)  # Increased for EC2
+            self.wait = WebDriverWait(self.driver, 45)  # Increased for EC2
             
-            # Test the driver
+            # Test the driver with a simple page
             logger.info("🧪 Testing Chrome driver...")
-            self.driver.get("data:text/html,<html><body><h1>RPA Test - Chrome Working!</h1></body></html>")
-            logger.info("✅ Chrome driver test successful")
+            try:
+                test_html = """
+                <html>
+                <head><title>RPA Test</title></head>
+                <body>
+                    <h1>RPA Test - Chrome Working on Windows EC2!</h1>
+                    <p>Driver setup successful</p>
+                </body>
+                </html>
+                """
+                self.driver.get(f"data:text/html,{test_html}")
+                logger.info("✅ Chrome driver test successful")
+                
+                # Get some basic info
+                logger.info(f"🔍 Browser info: {self.driver.capabilities.get('browserName')} {self.driver.capabilities.get('browserVersion')}")
+                logger.info(f"🔍 Window size: {self.driver.get_window_size()}")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Driver test failed: {e}")
+                # Don't fail here, might still work for actual navigation
             
             return True
             
@@ -115,31 +206,160 @@ class SimpleTorrentRPA:
             logger.error(f"❌ Chrome setup failed: {e}")
             logger.error(f"❌ Error type: {type(e).__name__}")
             
-            # Provide helpful suggestions
+            # Provide helpful error information
             if "chromedriver" in str(e).lower():
-                logger.error("💡 Suggestion: Install Chrome browser and ensure it's updated")
-                logger.error("💡 Or run: pip install webdriver-manager")
+                logger.error("💡 ChromeDriver issue detected")
+                logger.error("💡 Suggestion: Ensure Chrome is installed and updated")
+                logger.error("💡 Try: choco install googlechrome -y --force --ignore-checksums")
+            elif "chrome" in str(e).lower():
+                logger.error("💡 Chrome browser issue detected")
+                logger.error("💡 Suggestion: Install Chrome browser")
+                logger.error("💡 Try: choco install googlechrome -y")
+            elif "permission" in str(e).lower():
+                logger.error("💡 Permission issue detected")
+                logger.error("💡 Suggestion: Run as Administrator")
             
             return False
     
+    def get_chrome_version(self):
+        """Get installed Chrome version on Windows"""
+        try:
+            # Try different methods to get Chrome version
+            chrome_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+            ]
+            
+            for chrome_path in chrome_paths:
+                if os.path.exists(chrome_path):
+                    try:
+                        # Get version using PowerShell
+                        cmd = f'powershell "(Get-Item \'{chrome_path}\').VersionInfo.ProductVersion"'
+                        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                        if result.returncode == 0:
+                            version = result.stdout.strip()
+                            logger.info(f"✅ Chrome version detected: {version}")
+                            return version
+                    except Exception as e:
+                        logger.warning(f"⚠️ Version detection failed for {chrome_path}: {e}")
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Chrome version detection failed: {e}")
+            return None
+    
+    def download_chromedriver(self, chrome_version):
+        """Download ChromeDriver for specific Chrome version"""
+        try:
+            import requests
+            import zipfile
+            
+            # Extract major version
+            major_version = chrome_version.split('.')[0]
+            
+            # ChromeDriver download URL (simplified for major version)
+            driver_url = f"https://chromedriver.storage.googleapis.com/LATEST_RELEASE_{major_version}"
+            
+            # Get exact driver version
+            response = requests.get(driver_url)
+            if response.status_code == 200:
+                driver_version = response.text.strip()
+                
+                # Download ChromeDriver
+                download_url = f"https://chromedriver.storage.googleapis.com/{driver_version}/chromedriver_win32.zip"
+                
+                # Create temp directory
+                temp_dir = os.path.join(os.getcwd(), "temp_chromedriver")
+                os.makedirs(temp_dir, exist_ok=True)
+                
+                # Download and extract
+                zip_path = os.path.join(temp_dir, "chromedriver.zip")
+                with requests.get(download_url, stream=True) as r:
+                    with open(zip_path, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                
+                # Extract
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                
+                driver_path = os.path.join(temp_dir, "chromedriver.exe")
+                if os.path.exists(driver_path):
+                    logger.info(f"✅ ChromeDriver downloaded: {driver_path}")
+                    return driver_path
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ ChromeDriver download failed: {e}")
+            return None
+    
     def navigate_to_torrent_power(self):
-        """Navigate to Torrent Power website"""
+        """Navigate to Torrent Power website with robust error handling"""
         try:
             url = "https://connect.torrentpower.com/tplcp/application/namechangerequest"
             logger.info(f"🌐 Navigating to: {url}")
             
+            # Set longer timeout for Windows EC2
+            self.driver.set_page_load_timeout(60)
+            
+            # Navigate to the URL
             self.driver.get(url)
+            logger.info("✅ URL loaded, waiting for page elements...")
             
-            # Wait for page to load
-            self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-            logger.info("✅ Page loaded successfully")
+            # Wait for page to load with multiple fallback checks
+            try:
+                # Method 1: Wait for body tag
+                self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                logger.info("✅ Body element found")
+            except:
+                logger.warning("⚠️ Body element not found, trying alternative checks...")
+                
+                # Method 2: Wait for any form element
+                try:
+                    self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "form")))
+                    logger.info("✅ Form element found")
+                except:
+                    # Method 3: Wait for any input element
+                    try:
+                        self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "input")))
+                        logger.info("✅ Input element found")
+                    except:
+                        # Method 4: Just wait for page title
+                        if self.driver.title:
+                            logger.info(f"✅ Page loaded with title: {self.driver.title}")
+                        else:
+                            logger.warning("⚠️ Page may not have loaded properly")
             
-            # Clean automation without annoying banners
+            # Additional wait for JavaScript to load
+            time.sleep(3)
             
-            return True
+            # Check if we're on the right page
+            current_url = self.driver.current_url
+            logger.info(f"🔍 Current URL: {current_url}")
+            
+            if "torrentpower.com" in current_url.lower():
+                logger.info("✅ Successfully navigated to Torrent Power website")
+                return True
+            else:
+                logger.warning(f"⚠️ Unexpected URL: {current_url}")
+                # Still try to continue - might be a redirect
+                return True
             
         except Exception as e:
             logger.error(f"❌ Navigation failed: {e}")
+            logger.error(f"❌ Error type: {type(e).__name__}")
+            
+            # Try to get more information about the error
+            try:
+                current_url = self.driver.current_url
+                page_title = self.driver.title
+                logger.error(f"❌ Current URL: {current_url}")
+                logger.error(f"❌ Page title: {page_title}")
+            except:
+                logger.error("❌ Could not get page information")
+            
             return False
     
     def fill_form(self, form_data):

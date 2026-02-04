@@ -1,211 +1,234 @@
 # Windows EC2 Deployment Script for RPA Government Portal
-# Run this script on Windows EC2 instance (34.228.199.241)
+# Server: 34.228.199.241
 
 Write-Host "🚀 DEPLOYING RPA GOVERNMENT PORTAL TO WINDOWS EC2" -ForegroundColor Green
-Write-Host "=================================================" -ForegroundColor Green
+Write-Host "================================================" -ForegroundColor Green
 Write-Host ""
 
 # Check if running as Administrator
-if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Host "❌ This script must be run as Administrator!" -ForegroundColor Red
-    Write-Host "Right-click PowerShell and select 'Run as Administrator'" -ForegroundColor Yellow
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+if (-not $isAdmin) {
+    Write-Host "❌ Please run this script as Administrator" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "✅ Running as Administrator" -ForegroundColor Green
+Write-Host "📋 Checking Prerequisites..." -ForegroundColor Yellow
 
-# Step 1: Install Chocolatey (Package Manager)
-Write-Host "📦 Installing Chocolatey..." -ForegroundColor Cyan
+# Check Git
 try {
-    Set-ExecutionPolicy Bypass -Scope Process -Force
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-    Write-Host "✅ Chocolatey installed" -ForegroundColor Green
+    $gitVersion = git --version
+    Write-Host "✅ Git: $gitVersion" -ForegroundColor Green
 } catch {
-    Write-Host "⚠️ Chocolatey installation failed, continuing..." -ForegroundColor Yellow
+    Write-Host "❌ Git not found. Installing..." -ForegroundColor Red
+    # Install Git via Chocolatey
+    if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
+        Write-Host "Installing Chocolatey..." -ForegroundColor Yellow
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+    }
+    choco install git -y
+    refreshenv
 }
 
-# Step 2: Install Prerequisites
-Write-Host "🔧 Installing Prerequisites..." -ForegroundColor Cyan
+# Check Python
+try {
+    $pythonVersion = python --version
+    Write-Host "✅ Python: $pythonVersion" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Python not found. Please install Python 3.11+" -ForegroundColor Red
+    Write-Host "Download from: https://www.python.org/downloads/" -ForegroundColor Yellow
+    exit 1
+}
 
-# Install Python
-Write-Host "Installing Python..." -ForegroundColor Yellow
-choco install python -y
+# Check Node.js
+try {
+    $nodeVersion = node --version
+    Write-Host "✅ Node.js: $nodeVersion" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Node.js not found. Installing..." -ForegroundColor Red
+    choco install nodejs -y
+    refreshenv
+}
 
-# Install Node.js
-Write-Host "Installing Node.js..." -ForegroundColor Yellow
-choco install nodejs -y
+# Check Chrome
+$chromePaths = @(
+    "C:\Program Files\Google\Chrome\Application\chrome.exe",
+    "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+)
 
-# Install Git
-Write-Host "Installing Git..." -ForegroundColor Yellow
-choco install git -y
+$chromeFound = $false
+foreach ($path in $chromePaths) {
+    if (Test-Path $path) {
+        Write-Host "✅ Chrome found at: $path" -ForegroundColor Green
+        $chromeFound = $true
+        break
+    }
+}
 
-# Install Chrome
-Write-Host "Installing Chrome..." -ForegroundColor Yellow
-choco install googlechrome -y
+if (-not $chromeFound) {
+    Write-Host "❌ Chrome not found. Installing..." -ForegroundColor Red
+    choco install googlechrome -y --ignore-checksums
+}
 
-# Refresh environment variables
-Write-Host "Refreshing environment variables..." -ForegroundColor Yellow
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+Write-Host ""
+Write-Host "📥 Cloning Repository..." -ForegroundColor Yellow
 
-# Step 3: Clone Repository
-Write-Host "📥 Cloning Repository..." -ForegroundColor Cyan
-Set-Location C:\
+# Clone repository
 if (Test-Path "C:\rpa-gov-portal") {
-    Write-Host "Repository already exists, pulling latest changes..." -ForegroundColor Yellow
-    Set-Location C:\rpa-gov-portal
+    Write-Host "Repository already exists. Updating..." -ForegroundColor Yellow
+    Set-Location "C:\rpa-gov-portal"
     git pull origin main
 } else {
+    Set-Location "C:\"
     git clone https://github.com/Vaidehip0407/rpa-gov-portal.git
-    Set-Location C:\rpa-gov-portal
+    Set-Location "C:\rpa-gov-portal"
 }
 
-# Step 4: Setup Backend
-Write-Host "🐍 Setting up Backend..." -ForegroundColor Cyan
-Set-Location backend
+Write-Host ""
+Write-Host "🐍 Setting up Backend..." -ForegroundColor Yellow
+
+# Setup backend
+Set-Location "C:\rpa-gov-portal\backend"
 
 # Install Python dependencies
-Write-Host "Installing Python dependencies..." -ForegroundColor Yellow
+Write-Host "Installing Python packages..." -ForegroundColor Yellow
 pip install -r requirements.txt
 
 # Create .env file
-Write-Host "Creating .env file..." -ForegroundColor Yellow
 $envContent = @"
 DATABASE_URL=sqlite:///./unified_portal.db
-SECRET_KEY=rpa-gov-portal-secret-key-2024
+SECRET_KEY=windows-ec2-rpa-portal-secret-key-2026
+ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 APP_NAME=RPA Government Portal
-ALGORITHM=HS256
+ENVIRONMENT=production
+DEBUG=false
+
+# CORS for Windows EC2
+FRONTEND_URL=http://34.228.199.241
+BACKEND_CORS_ORIGINS=["http://34.228.199.241", "http://34.228.199.241:80", "http://localhost:3000"]
+
+# OpenAI API Key (replace with actual key)
+OPENAI_API_KEY=your-openai-api-key-here
 "@
+
 $envContent | Out-File -FilePath ".env" -Encoding UTF8
+Write-Host "✅ Backend environment configured" -ForegroundColor Green
 
-Write-Host "✅ Backend setup complete" -ForegroundColor Green
+Write-Host ""
+Write-Host "🎨 Setting up Frontend..." -ForegroundColor Yellow
 
-# Step 5: Setup Frontend
-Write-Host "🎨 Setting up Frontend..." -ForegroundColor Cyan
-Set-Location ..\frontend
+# Setup frontend
+Set-Location "C:\rpa-gov-portal\frontend"
 
 # Install Node dependencies
-Write-Host "Installing Node dependencies..." -ForegroundColor Yellow
+Write-Host "Installing Node packages..." -ForegroundColor Yellow
 npm install
 
 # Build frontend
 Write-Host "Building frontend..." -ForegroundColor Yellow
 npm run build
 
-Write-Host "✅ Frontend setup complete" -ForegroundColor Green
+Write-Host "✅ Frontend build complete" -ForegroundColor Green
 
-# Step 6: Configure Windows Firewall
-Write-Host "🔥 Configuring Windows Firewall..." -ForegroundColor Cyan
-netsh advfirewall firewall add rule name="RPA Portal Frontend" dir=in action=allow protocol=TCP localport=3003
+Write-Host ""
+Write-Host "🔥 Configuring Windows Firewall..." -ForegroundColor Yellow
+
+# Configure firewall
+netsh advfirewall firewall add rule name="RPA Portal Frontend" dir=in action=allow protocol=TCP localport=80
 netsh advfirewall firewall add rule name="RPA Portal Backend" dir=in action=allow protocol=TCP localport=8000
+
 Write-Host "✅ Firewall configured" -ForegroundColor Green
 
-# Step 7: Create startup scripts
-Write-Host "📝 Creating startup scripts..." -ForegroundColor Cyan
+Write-Host ""
+Write-Host "📝 Creating startup scripts..." -ForegroundColor Yellow
 
 # Backend startup script
 $backendScript = @"
 @echo off
-cd C:\rpa-gov-portal\backend
+cd /d C:\rpa-gov-portal\backend
 echo 🚀 Starting RPA Government Portal Backend...
 echo Backend will be available at: http://34.228.199.241:8000
-echo API Docs: http://34.228.199.241:8000/docs
-echo.
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+echo API Documentation: http://34.228.199.241:8000/docs
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 pause
 "@
+
 $backendScript | Out-File -FilePath "C:\rpa-gov-portal\start-backend.bat" -Encoding UTF8
 
 # Frontend startup script
 $frontendScript = @"
 @echo off
-cd C:\rpa-gov-portal\frontend
+cd /d C:\rpa-gov-portal\frontend
 echo 🎨 Starting RPA Government Portal Frontend...
-echo Frontend will be available at: http://34.228.199.241:3003
-echo.
-npm run preview -- --host 0.0.0.0 --port 3003
+echo Frontend will be available at: http://34.228.199.241
+npx serve dist -l 80
 pause
 "@
+
 $frontendScript | Out-File -FilePath "C:\rpa-gov-portal\start-frontend.bat" -Encoding UTF8
 
 # Combined startup script
-$portalScript = @"
+$combinedScript = @"
 @echo off
-echo 🚀 STARTING RPA GOVERNMENT PORTAL
-echo ================================
-echo.
-echo Starting Backend...
-start "RPA Backend" cmd /k "C:\rpa-gov-portal\start-backend.bat"
-timeout /t 5 /nobreak > nul
-
-echo Starting Frontend...
-start "RPA Frontend" cmd /k "C:\rpa-gov-portal\start-frontend.bat"
-
-echo.
-echo 🎉 RPA Government Portal is starting!
-echo ====================================
+echo 🚀 Starting RPA Government Portal - Windows EC2
+echo ===============================================
 echo.
 echo 🌐 URLs:
-echo Frontend: http://34.228.199.241:3003
+echo Frontend: http://34.228.199.241
 echo Backend:  http://34.228.199.241:8000
 echo API Docs: http://34.228.199.241:8000/docs
 echo.
 echo 🤖 RPA Features:
 echo ✅ Visible Chrome browser automation
-echo ✅ Torrent Power form auto-fill
+echo ✅ Torrent Power form auto-fill  
 echo ✅ Real-time visual feedback
-echo ✅ Success messages after submission
 echo.
-echo 📝 Next Steps:
-echo 1. Wait for services to start (30 seconds)
-echo 2. Open browser and go to: http://34.228.199.241:3003
-echo 3. Register/Login to portal
-echo 4. Test RPA automation!
-echo.
+
+start "Backend" cmd /k "C:\rpa-gov-portal\start-backend.bat"
+timeout /t 5 /nobreak
+start "Frontend" cmd /k "C:\rpa-gov-portal\start-frontend.bat"
+
+echo ✅ Both services starting...
+echo Check the opened windows for status
 pause
 "@
-$portalScript | Out-File -FilePath "C:\rpa-gov-portal\start-portal.bat" -Encoding UTF8
+
+$combinedScript | Out-File -FilePath "C:\rpa-gov-portal\start-portal.bat" -Encoding UTF8
 
 Write-Host "✅ Startup scripts created" -ForegroundColor Green
 
-# Step 8: Final Instructions
 Write-Host ""
-Write-Host "🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
-Write-Host "====================================" -ForegroundColor Green
+Write-Host "🎉 DEPLOYMENT COMPLETE!" -ForegroundColor Green
+Write-Host "======================" -ForegroundColor Green
 Write-Host ""
-Write-Host "📁 Files created:" -ForegroundColor Cyan
-Write-Host "  - C:\rpa-gov-portal\start-backend.bat" -ForegroundColor White
-Write-Host "  - C:\rpa-gov-portal\start-frontend.bat" -ForegroundColor White
-Write-Host "  - C:\rpa-gov-portal\start-portal.bat" -ForegroundColor White
+Write-Host "🚀 To start the portal:" -ForegroundColor Yellow
+Write-Host "   Double-click: C:\rpa-gov-portal\start-portal.bat" -ForegroundColor White
 Write-Host ""
-Write-Host "🚀 To start the portal:" -ForegroundColor Cyan
-Write-Host "  Double-click: C:\rpa-gov-portal\start-portal.bat" -ForegroundColor White
+Write-Host "🌐 Access URLs:" -ForegroundColor Yellow
+Write-Host "   Frontend: http://34.228.199.241" -ForegroundColor White
+Write-Host "   Backend:  http://34.228.199.241:8000" -ForegroundColor White
+Write-Host "   API Docs: http://34.228.199.241:8000/docs" -ForegroundColor White
 Write-Host ""
-Write-Host "🌐 Access URLs:" -ForegroundColor Cyan
-Write-Host "  Frontend: http://34.228.199.241:3003" -ForegroundColor White
-Write-Host "  Backend:  http://34.228.199.241:8000" -ForegroundColor White
-Write-Host "  API Docs: http://34.228.199.241:8000/docs" -ForegroundColor White
+Write-Host "🤖 RPA Features:" -ForegroundColor Yellow
+Write-Host "   ✅ Visible Chrome browser automation" -ForegroundColor Green
+Write-Host "   ✅ Torrent Power form auto-fill" -ForegroundColor Green
+Write-Host "   ✅ Real-time visual feedback" -ForegroundColor Green
+Write-Host "   ✅ Success messages after submission" -ForegroundColor Green
 Write-Host ""
-Write-Host "🤖 RPA Features Ready:" -ForegroundColor Cyan
-Write-Host "  ✅ Visible Chrome browser automation" -ForegroundColor Green
-Write-Host "  ✅ Torrent Power form auto-fill" -ForegroundColor Green
-Write-Host "  ✅ Real-time visual feedback" -ForegroundColor Green
-Write-Host "  ✅ Success messages after submission" -ForegroundColor Green
-Write-Host ""
-Write-Host "🔧 AWS Security Group:" -ForegroundColor Yellow
-Write-Host "  Make sure to allow inbound traffic on ports 3003 and 8000" -ForegroundColor White
+Write-Host "📝 Next Steps:" -ForegroundColor Yellow
+Write-Host "   1. Update OPENAI_API_KEY in backend\.env" -ForegroundColor White
+Write-Host "   2. Run: C:\rpa-gov-portal\start-portal.bat" -ForegroundColor White
+Write-Host "   3. Test RPA automation" -ForegroundColor White
+Write-Host "   4. Enjoy visible browser automation!" -ForegroundColor White
 Write-Host ""
 
-# Ask if user wants to start the portal now
-$startNow = Read-Host "Do you want to start the portal now? (y/n)"
+# Ask if user wants to start now
+$startNow = Read-Host "Start the portal now? (y/n)"
 if ($startNow -eq "y" -or $startNow -eq "Y") {
-    Write-Host "🚀 Starting RPA Government Portal..." -ForegroundColor Green
+    Write-Host "🚀 Starting portal..." -ForegroundColor Green
     Start-Process "C:\rpa-gov-portal\start-portal.bat"
-} else {
-    Write-Host "👍 You can start the portal later by running:" -ForegroundColor Yellow
-    Write-Host "   C:\rpa-gov-portal\start-portal.bat" -ForegroundColor White
 }
 
-Write-Host ""
-Write-Host "🎯 Deployment Complete! Your RPA Government Portal is ready!" -ForegroundColor Green
+Write-Host "✅ Deployment script completed!" -ForegroundColor Green

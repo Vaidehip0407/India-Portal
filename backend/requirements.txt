@@ -22,6 +22,7 @@ pytesseract==0.3.10
 
 # HTTP client
 httpx==0.25.2
+requests==2.31.0
 
 # Environment
 python-dotenv==1.0.0
