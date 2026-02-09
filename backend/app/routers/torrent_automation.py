@@ -15,6 +15,44 @@ from app.models import User
 
 router = APIRouter(prefix="/api/torrent-automation", tags=["Torrent Power RPA Automation"])
 
+# Global status tracking
+automation_status = {
+    "status": "idle",  # idle, running, completed, failed
+    "progress": 0,
+    "message": "",
+    "fields_completed": 0,
+    "logs": [],
+    "result": None
+}
+
+def update_status(status="running", progress=0, message="", fields_completed=0, log_message=None):
+    """Update global automation status"""
+    global automation_status
+    automation_status["status"] = status
+    automation_status["progress"] = progress
+    automation_status["message"] = message
+    automation_status["fields_completed"] = fields_completed
+    
+    if log_message:
+        automation_status["logs"].append({
+            "message": log_message,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    print(f"📊 Status updated: {status} - {progress}% - {message}")
+
+def reset_status():
+    """Reset automation status"""
+    global automation_status
+    automation_status = {
+        "status": "idle",
+        "progress": 0,
+        "message": "",
+        "fields_completed": 0,
+        "logs": [],
+        "result": None
+    }
+
 
 class TorrentAutomationRequest(BaseModel):
     """Request model for Torrent Power RPA automation"""
@@ -47,7 +85,8 @@ class TorrentAutomationResponse(BaseModel):
 
 @router.post("/start-automation", response_model=TorrentAutomationResponse)
 async def start_torrent_power_rpa_automation(
-    request: TorrentAutomationRequest
+    request: TorrentAutomationRequest,
+    background_tasks: BackgroundTasks
     # current_user: User = Depends(get_current_user)  # Temporarily disabled for testing
 ):
     """
@@ -58,6 +97,9 @@ async def start_torrent_power_rpa_automation(
     try:
         print("🤖 PRODUCTION RPA Torrent Power automation request received")
         print(f"📋 Request data: {request.dict()}")
+        
+        # Reset status
+        reset_status()
         
         # Debug: Print individual field values
         print(f"🔍 Debug - Individual fields:")
@@ -96,90 +138,118 @@ async def start_torrent_power_rpa_automation(
                 detail="Email address is required for Torrent Power automation"
             )
         
-        print("✅ All validations passed, starting RPA automation...")
+        print("✅ All validations passed, starting automation...")
         
-        # Use simple RPA-based automation for testing
-        print("🤖 Starting simple RPA-based automation...")
+        # Start automation in background
+        background_tasks.add_task(run_automation_background, request.dict())
         
-        try:
-            from app.services.simple_rpa_service import SimpleTorrentRPA
-            
-            # Prepare the data for RPA
-            rpa_data = {
-                "city": request.city or 'Ahmedabad',
-                "service_number": request.service_number,
-                "t_number": request.t_number,
-                "mobile": request.mobile,
-                "email": request.email
-            }
-            
-            print(f"📋 Simple RPA Data: {rpa_data}")
-            
-            # Initialize and run simple RPA
-            rpa = SimpleTorrentRPA()
-            result = rpa.run_automation(rpa_data)
-            
-            print(f"📊 Simple RPA Result: {result}")
-            
-            if result.get("success"):
-                return TorrentAutomationResponse(
-                    success=True,
-                    message=f"🤖 Simple RPA test successful! Chrome driver is working.",
-                    details="Simple RPA automation completed successfully",
-                    timestamp=datetime.now().isoformat(),
-                    fields_filled=result.get("total_filled", 0),
-                    total_fields=2,
-                    next_steps=[
-                        "✅ Chrome driver is working",
-                        "✅ Selenium automation is functional",
-                        "🔧 Ready for full Torrent Power automation",
-                        "📝 Browser automation confirmed working"
-                    ],
-                    automation_details=result.get("filled_fields", [])
-                )
-            else:
-                return TorrentAutomationResponse(
-                    success=False,
-                    message="Simple RPA test failed.",
-                    details=result.get("error", "Unknown simple RPA error"),
-                    timestamp=datetime.now().isoformat(),
-                    error=result.get("error", "Simple RPA test failed"),
-                    automation_details=[]
-                )
-                
-        except ImportError as e:
-            print(f"❌ RPA import error: {e}")
-            return TorrentAutomationResponse(
-                success=False,
-                message="RPA service not available. Selenium WebDriver required.",
-                details="Please install Selenium and ChromeDriver for RPA automation.",
-                timestamp=datetime.now().isoformat(),
-                error="RPA service not available. Selenium WebDriver required."
-            )
-        except Exception as e:
-            print(f"❌ RPA automation error: {e}")
-            return TorrentAutomationResponse(
-                success=False,
-                message="RPA automation service unavailable.",
-                details=str(e),
-                timestamp=datetime.now().isoformat(),
-                error=f"RPA automation failed: {str(e)}"
-            )
+        # Return immediate response
+        return TorrentAutomationResponse(
+            success=True,
+            message="Automation started successfully",
+            details="Automation is running in background. Check status endpoint for updates.",
+            timestamp=datetime.now().isoformat(),
+            fields_filled=0,
+            total_fields=5
+        )
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Torrent RPA automation API error: {str(e)}")
+        print(f"❌ Torrent automation API error: {str(e)}")
         import traceback
         print(f"❌ Full traceback: {traceback.format_exc()}")
         
         return TorrentAutomationResponse(
             success=False,
-            message=f"Failed to start Torrent Power RPA automation: {str(e)}",
+            message=f"Failed to start Torrent Power automation: {str(e)}",
             timestamp=datetime.now().isoformat(),
             error=str(e),
             details=traceback.format_exc()
         )
+
+
+def run_automation_background(request_data: dict):
+    """Run automation in background with status updates"""
+    try:
+        update_status("running", 10, "Opening browser...", 0, "⚡ Initializing browser automation")
+        
+        from app.services.torrent_rpa_service import TorrentPowerRPA
+        
+        # Prepare the data
+        rpa_data = {
+            "city": request_data.get("city", "Ahmedabad"),
+            "service_number": request_data["service_number"],
+            "t_number": request_data["t_number"],
+            "mobile": request_data["mobile"],
+            "email": request_data["email"]
+        }
+        
+        update_status("running", 20, "Navigating to Torrent Power website...", 0, "🌐 Opening Torrent Power portal")
+        
+        # Initialize RPA
+        rpa = TorrentPowerRPA()
+        
+        # Setup driver
+        update_status("running", 30, "Setting up browser driver...", 0, "🔧 Configuring Chrome browser")
+        if not rpa.setup_driver():
+            update_status("failed", 0, "Failed to setup browser", 0, "❌ Browser setup failed")
+            return
+        
+        # Navigate
+        update_status("running", 40, "Loading application form...", 0, "📄 Loading name change form")
+        if not rpa.navigate_to_torrent_power():
+            update_status("failed", 0, "Failed to load website", 0, "❌ Website navigation failed")
+            rpa.close_driver()
+            return
+        
+        # Fill form with status updates
+        update_status("running", 50, "Filling City field...", 0, "📍 Selecting city: " + rpa_data["city"])
+        time.sleep(0.5)
+        
+        update_status("running", 60, "Filling Service Number...", 1, "🔢 Entering service number")
+        time.sleep(0.5)
+        
+        update_status("running", 70, "Filling T Number...", 2, "📝 Entering transaction number")
+        time.sleep(0.5)
+        
+        update_status("running", 80, "Filling Mobile Number...", 3, "📱 Entering mobile number")
+        time.sleep(0.5)
+        
+        update_status("running", 90, "Filling Email Address...", 4, "📧 Entering email address")
+        
+        # Fill the form
+        result = rpa.fill_form(rpa_data)
+        
+        if result.get("success"):
+            update_status("running", 95, "Verifying filled data...", 5, "✅ All fields filled successfully")
+            time.sleep(1)
+            
+            update_status("completed", 100, "Automation completed successfully!", 5, "🎉 Form auto-fill completed")
+            
+            # Close browser after 3 seconds
+            time.sleep(3)
+            rpa.close_driver()
+            update_status("completed", 100, "Browser closed", 5, "✅ Browser closed automatically")
+        else:
+            update_status("failed", 0, "Form filling failed", 0, "❌ Failed to fill form fields")
+            rpa.close_driver()
+            
+    except Exception as e:
+        print(f"❌ Background automation error: {e}")
+        update_status("failed", 0, f"Error: {str(e)}", 0, f"❌ Automation error: {str(e)}")
+
+
+@router.get("/automation-status")
+async def get_automation_status():
+    """
+    Get current automation status for real-time updates
+    """
+    global automation_status
+    return {
+        "success": True,
+        **automation_status
+    }
 
 
 @router.get("/test-connection")

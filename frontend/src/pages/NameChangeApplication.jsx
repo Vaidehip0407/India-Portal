@@ -697,8 +697,8 @@ const NameChangeApplication = () => {
                 disabled={loading}
                 className="px-8 py-3 rounded-lg font-bold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
-                <Bot className="w-5 h-5 fill-current" />
-                Start AI Auto-fill in Website (Production Ready)
+                <Play className="w-5 h-5" />
+                Start
               </button>
             ) : (
               <button

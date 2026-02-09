@@ -25,145 +25,99 @@ class TorrentPowerRPA:
         self.wait = None
         
     def setup_driver(self):
-        """Setup Chrome WebDriver with proper options for EC2"""
+        """Setup Chrome WebDriver with proper options for Windows/EC2"""
         try:
             chrome_options = Options()
             
             # Check if running in Docker/EC2 environment
             is_docker = os.path.exists('/.dockerenv')
-            is_ec2 = os.path.exists('/opt/aws') or 'ec2' in os.uname().nodename.lower()
+            is_windows = os.name == 'nt'
             
-            logger.info(f"🔍 Environment detection - Docker: {is_docker}, EC2: {is_ec2}")
+            logger.info(f"🔍 Environment detection - Windows: {is_windows}, Docker: {is_docker}")
             
-            if is_docker or is_ec2:
+            if is_docker:
                 # Docker/EC2 specific options
                 chrome_options.add_argument("--headless=new")  # Use new headless mode
                 chrome_options.add_argument("--no-sandbox")
                 chrome_options.add_argument("--disable-dev-shm-usage")
                 chrome_options.add_argument("--disable-gpu")
-                chrome_options.add_argument("--disable-software-rasterizer")
-                chrome_options.add_argument("--disable-background-timer-throttling")
-                chrome_options.add_argument("--disable-backgrounding-occluded-windows")
-                chrome_options.add_argument("--disable-renderer-backgrounding")
-                chrome_options.add_argument("--disable-features=TranslateUI")
-                chrome_options.add_argument("--disable-ipc-flooding-protection")
-                chrome_options.add_argument("--memory-pressure-off")
-                chrome_options.add_argument("--max_old_space_size=4096")
-                
-                # Set display for X11 forwarding (if available)
-                if 'DISPLAY' not in os.environ:
-                    os.environ['DISPLAY'] = ':99'
-                
-                logger.info("🐳 Using Docker/EC2 optimized Chrome options")
-            else:
-                # Local development - visible browser
+                chrome_options.binary_location = "/usr/bin/google-chrome"
+                logger.info("🐳 Using Docker optimized Chrome options")
+            elif is_windows:
+                # Windows - visible browser for localhost development
                 chrome_options.add_argument("--start-maximized")
-                logger.info("💻 Using local development Chrome options (visible browser)")
+                
+                # Set Chrome binary path for Windows
+                chrome_paths = [
+                    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+                    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+                    os.path.expanduser("~\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe")
+                ]
+                
+                for chrome_path in chrome_paths:
+                    if os.path.exists(chrome_path):
+                        chrome_options.binary_location = chrome_path
+                        logger.info(f"✅ Found Chrome at: {chrome_path}")
+                        break
+                
+                logger.info("💻 Using Windows Chrome options (visible browser)")
+            else:
+                # Linux headless
+                chrome_options.add_argument("--headless=new")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--disable-dev-shm-usage")
+                logger.info("🐧 Using Linux headless Chrome options")
             
             # Common options for all environments
             chrome_options.add_argument("--window-size=1920,1080")
             chrome_options.add_argument("--disable-extensions")
-            chrome_options.add_argument("--disable-plugins")
             chrome_options.add_argument("--disable-notifications")
             chrome_options.add_argument("--disable-popup-blocking")
-            chrome_options.add_argument("--disable-translate")
-            chrome_options.add_argument("--disable-logging")
-            chrome_options.add_argument("--disable-login-animations")
-            chrome_options.add_argument("--disable-motion-blur")
-            chrome_options.add_argument("--no-first-run")
-            chrome_options.add_argument("--no-default-browser-check")
             chrome_options.add_argument("--ignore-certificate-errors")
-            chrome_options.add_argument("--ignore-ssl-errors")
-            chrome_options.add_argument("--ignore-certificate-errors-spki-list")
-            chrome_options.add_argument("--ignore-certificate-errors-ssl-errors")
-            
-            # User agent to avoid detection
             chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             
-            # Set Chrome binary path for Docker
-            if is_docker:
-                chrome_options.binary_location = "/usr/bin/google-chrome"
-            
-            # Try multiple ChromeDriver approaches in order of preference
+            # Try to initialize driver
             driver_initialized = False
             
-            # Method 1: Use system-installed ChromeDriver (from Dockerfile)
-            try:
-                logger.info("🔧 Trying system ChromeDriver from /usr/bin/chromedriver...")
-                service = Service('/usr/bin/chromedriver')
-                self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                logger.info("✅ Chrome driver initialized with system ChromeDriver")
-                driver_initialized = True
-            except Exception as e:
-                logger.error(f"❌ System ChromeDriver failed: {e}")
-            
-            # Method 2: Try webdriver-manager (with path fix)
+            # Method 1: Use webdriver-manager (best for Windows)
             if not driver_initialized:
                 try:
-                    logger.info("🔧 Trying webdriver-manager...")
+                    logger.info("🔧 Trying webdriver-manager (auto-download ChromeDriver)...")
                     from webdriver_manager.chrome import ChromeDriverManager
                     
-                    # Use webdriver-manager to handle driver installation
-                    driver_path = ChromeDriverManager().install()
-                    logger.info(f"🔍 ChromeDriver path from webdriver-manager: {driver_path}")
-                    
-                    # Fix common webdriver-manager path issue
-                    if 'THIRD_PARTY_NOTICES' in driver_path or not driver_path.endswith('chromedriver'):
-                        # Extract the correct directory and find the actual chromedriver binary
-                        driver_dir = os.path.dirname(driver_path)
-                        
-                        # Look for the actual chromedriver binary
-                        possible_paths = [
-                            os.path.join(driver_dir, 'chromedriver'),
-                            os.path.join(driver_dir, 'chromedriver-linux64', 'chromedriver'),
-                            os.path.join(os.path.dirname(driver_dir), 'chromedriver'),
-                        ]
-                        
-                        for possible_path in possible_paths:
-                            if os.path.exists(possible_path):
-                                driver_path = possible_path
-                                logger.info(f"🔧 Fixed ChromeDriver path: {driver_path}")
-                                break
-                        else:
-                            # Search for any chromedriver file in the directory tree
-                            for root, dirs, files in os.walk(os.path.dirname(driver_dir)):
-                                for file in files:
-                                    if file == 'chromedriver':
-                                        driver_path = os.path.join(root, file)
-                                        logger.info(f"🔧 Found ChromeDriver binary: {driver_path}")
-                                        break
-                                if driver_path != ChromeDriverManager().install():
-                                    break
-                    
-                    # Make sure the driver is executable
-                    if os.path.exists(driver_path):
-                        os.chmod(driver_path, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-                        
-                        service = Service(driver_path)
-                        self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                        logger.info("✅ Chrome driver initialized with webdriver-manager")
-                        driver_initialized = True
-                    else:
-                        logger.error(f"❌ ChromeDriver path does not exist: {driver_path}")
-                        
+                    service = Service(ChromeDriverManager().install())
+                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                    logger.info("✅ Chrome driver initialized with webdriver-manager")
+                    driver_initialized = True
                 except ImportError:
-                    logger.error("❌ webdriver-manager not available")
+                    logger.warning("⚠️ webdriver-manager not installed")
                 except Exception as e:
-                    logger.error(f"❌ webdriver-manager Chrome driver failed: {e}")
+                    logger.error(f"❌ webdriver-manager failed: {e}")
             
-            # Method 3: Try system PATH (no explicit service)
+            # Method 2: Try system ChromeDriver
+            if not driver_initialized and not is_windows:
+                try:
+                    logger.info("🔧 Trying system ChromeDriver...")
+                    service = Service('/usr/bin/chromedriver')
+                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                    logger.info("✅ Chrome driver initialized with system ChromeDriver")
+                    driver_initialized = True
+                except Exception as e:
+                    logger.error(f"❌ System ChromeDriver failed: {e}")
+            
+            # Method 3: Try default (from PATH)
             if not driver_initialized:
                 try:
                     logger.info("🔧 Trying Chrome from system PATH...")
                     self.driver = webdriver.Chrome(options=chrome_options)
-                    logger.info("✅ Chrome driver initialized from system PATH")
+                    logger.info("✅ Chrome driver initialized from PATH")
                     driver_initialized = True
                 except Exception as e:
-                    logger.error(f"❌ System PATH Chrome driver failed: {e}")
+                    logger.error(f"❌ PATH Chrome driver failed: {e}")
             
             # If all methods failed
             if not driver_initialized:
-                raise Exception("All ChromeDriver initialization methods failed")
+                raise Exception("All ChromeDriver initialization methods failed. Please install Chrome and ChromeDriver.")
             
             # Set timeouts
             self.driver.implicitly_wait(10)
@@ -181,13 +135,12 @@ class TorrentPowerRPA:
             logger.error(f"❌ Driver setup failed: {e}")
             logger.error(f"❌ Error details: {type(e).__name__}: {str(e)}")
             
-            # Try to provide helpful error messages
+            # Provide helpful error messages
             if "chrome not reachable" in str(e).lower():
-                logger.error("💡 Suggestion: Chrome binary might not be installed or accessible")
+                logger.error("💡 Chrome browser might not be installed")
             elif "chromedriver" in str(e).lower():
-                logger.error("💡 Suggestion: ChromeDriver might not be installed or in PATH")
-            elif "permission denied" in str(e).lower():
-                logger.error("💡 Suggestion: Permission issues with Chrome or ChromeDriver")
+                logger.error("💡 ChromeDriver might not be installed or incompatible")
+                logger.error("💡 Try: pip install webdriver-manager")
             
             return False
     
@@ -426,10 +379,10 @@ class TorrentPowerRPA:
             const notification = document.createElement('div');
             notification.innerHTML = `
                 <div style="position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 20px 30px; border-radius: 10px; font-family: Arial, sans-serif; font-size: 16px; z-index: 999999; box-shadow: 0 4px 20px rgba(0,0,0,0.3); max-width: 400px;">
-                    <strong>🤖 RPA Auto-fill Completed!</strong><br>
+                    <strong>🤖 Auto-fill Completed!</strong><br>
                     Fields filled: {success_count}/5<br>
                     <small style="font-size: 14px; margin-top: 10px; display: block;">
-                        RPA successfully filled the form fields.<br>
+                        Form fields have been filled successfully.<br>
                         Please review and submit the form.
                     </small>
                 </div>
@@ -473,7 +426,7 @@ class TorrentPowerRPA:
             
             # Show a message to user
             message_script = """
-            alert('🎉 RPA Auto-fill Completed!\\n\\nThe form has been filled automatically.\\n\\nPlease review the data and click Submit to complete your application.\\n\\nThe browser will stay open for your convenience.');
+            alert('🎉 Auto-fill Completed!\\n\\nThe form has been filled automatically.\\n\\nPlease review the data and click Submit to complete your application.\\n\\nThe browser will stay open for your convenience.');
             """
             self.driver.execute_script(message_script)
             
@@ -492,10 +445,10 @@ class TorrentPowerRPA:
         except Exception as e:
             logger.error(f"❌ Error closing browser: {e}")
     
-    def run_automation(self, form_data, keep_open=True, visible_mode=False):
-        """Run the complete RPA automation"""
+    def run_automation(self, form_data, keep_open=False, visible_mode=False):
+        """Run the complete automation"""
         try:
-            logger.info("🚀 Starting Torrent Power RPA Automation...")
+            logger.info("🚀 Starting Torrent Power automation...")
             logger.info(f"🔍 Mode: {'Visible' if visible_mode else 'Headless'}")
             
             # Setup driver
@@ -509,14 +462,20 @@ class TorrentPowerRPA:
             # Fill form
             result = self.fill_form(form_data)
             
-            if result["success"] and keep_open:
+            # Don't keep browser open by default - close after 3 seconds
+            if result["success"] and not keep_open:
+                logger.info("⏳ Waiting 3 seconds before closing browser...")
+                time.sleep(3)
+                self.close_driver()
+                logger.info("✅ Browser closed automatically")
+            elif result["success"] and keep_open:
                 # Keep browser open for user interaction
                 self.keep_browser_open(300)  # 5 minutes
             
             return result
             
         except Exception as e:
-            logger.error(f"❌ RPA automation failed: {e}")
+            logger.error(f"❌ Automation failed: {e}")
             return {"success": False, "error": str(e)}
         finally:
             if not keep_open:
@@ -525,7 +484,7 @@ class TorrentPowerRPA:
     def run_visible_automation(self, form_data):
         """Run automation with visible browser for debugging"""
         try:
-            logger.info("🚀 Starting VISIBLE Torrent Power RPA Automation...")
+            logger.info("🚀 Starting VISIBLE Torrent Power automation...")
             
             # Temporarily modify Chrome options for visible mode
             original_setup = self.setup_driver
@@ -573,7 +532,7 @@ class TorrentPowerRPA:
             return result
             
         except Exception as e:
-            logger.error(f"❌ Visible RPA automation failed: {e}")
+            logger.error(f"❌ Visible automation failed: {e}")
             return {"success": False, "error": str(e)}
         finally:
             self.close_driver()
@@ -589,7 +548,7 @@ class TorrentPowerRPA:
             const banner = document.createElement('div');
             banner.innerHTML = `
                 <div style="position: fixed; top: 0; left: 0; right: 0; background: linear-gradient(90deg, #007bff, #28a745); color: white; padding: 15px; text-align: center; font-family: Arial, sans-serif; font-size: 18px; z-index: 999999; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">
-                    🤖 <strong>RPA AUTOMATION RUNNING</strong> - Watch the form being filled automatically!
+                    🤖 <strong>AUTOMATION IN PROGRESS</strong> - Watch the form being filled automatically!
                 </div>
             `;
             document.body.appendChild(banner);
@@ -664,7 +623,7 @@ class TorrentPowerRPA:
             const completion = document.createElement('div');
             completion.innerHTML = `
                 <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #28a745; color: white; padding: 30px; border-radius: 15px; font-family: Arial, sans-serif; font-size: 20px; z-index: 999999; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; min-width: 400px;">
-                    <h2 style="margin: 0 0 15px 0;">🎉 RPA AUTOMATION COMPLETED!</h2>
+                    <h2 style="margin: 0 0 15px 0;">🎉 AUTOMATION COMPLETED!</h2>
                     <p style="margin: 10px 0; font-size: 18px;">Fields Successfully Filled: {success_count}/5</p>
                     <p style="margin: 10px 0; font-size: 16px;">Please review the form and submit when ready.</p>
                     <p style="margin: 15px 0 0 0; font-size: 14px; opacity: 0.9;">Browser will remain open for your convenience.</p>

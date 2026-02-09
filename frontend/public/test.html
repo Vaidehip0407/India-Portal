@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPA Portal - Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .btn-danger {
+            background: #f44336;
+        }
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 RPA Government Portal - Test Page</h1>
+        <p>Direct access to RPA automation without React loading issues</p>
+        
+        <div class="status" id="status">
+            <strong>Status:</strong> Ready to test
+        </div>
+        
+        <h2>🔧 Quick Actions</h2>
+        <button class="btn" onclick="testBackend()">Test Backend Health</button>
+        <button class="btn" onclick="clearStorage()">Clear Browser Storage</button>
+        <button class="btn" onclick="openMainApp()">Open Main App</button>
+        
+        <h2>🤖 Test RPA Automation</h2>
+        <div class="form-group">
+            <label>Service Number:</label>
+            <input type="text" id="serviceNumber" value="TP123456789" placeholder="Enter service number">
+        </div>
+        <div class="form-group">
+            <label>T Number:</label>
+            <input type="text" id="tNumber" value="T987654321" placeholder="Enter T number">
+        </div>
+        <div class="form-group">
+            <label>Mobile:</label>
+            <input type="text" id="mobile" value="9876543210" placeholder="Enter mobile number">
+        </div>
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="text" id="email" value="test@example.com" placeholder="Enter email">
+        </div>
+        
+        <button class="btn" onclick="startRPA()">🚀 Start RPA Automation</button>
+        <button class="btn btn-danger" onclick="stopRPA()">⏹️ Stop RPA</button>
+        
+        <h2>📋 Instructions</h2>
+        <ol>
+            <li><strong>Test Backend:</strong> Click "Test Backend Health" to verify API is working</li>
+            <li><strong>Clear Storage:</strong> If main app is stuck loading, click "Clear Browser Storage"</li>
+            <li><strong>Test RPA:</strong> Fill the form above and click "Start RPA Automation"</li>
+            <li><strong>Watch Chrome:</strong> RPA will open Chrome browser and auto-fill Torrent Power form</li>
+        </ol>
+        
+        <div class="status">
+            <strong>URLs:</strong><br>
+            • Frontend: <a href="http://localhost:3005" style="color: #87CEEB;">http://localhost:3005</a><br>
+            • Backend: <a href="http://localhost:8000" style="color: #87CEEB;">http://localhost:8000</a><br>
+            • API Docs: <a href="http://localhost:8000/docs" style="color: #87CEEB;">http://localhost:8000/docs</a>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.innerHTML = `<strong>Status:</strong> ${message}`;
+            status.style.background = isError ? 'rgba(244, 67, 54, 0.3)' : 'rgba(76, 175, 80, 0.3)';
+        }
+        
+        async function testBackend() {
+            updateStatus('Testing backend...');
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus(`✅ Backend is healthy: ${JSON.stringify(data)}`);
+                } else {
+                    updateStatus(`❌ Backend error: ${response.status}`, true);
+                }
+            } catch (error) {
+                updateStatus(`❌ Backend not accessible: ${error.message}`, true);
+            }
+        }
+        
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            updateStatus('✅ Browser storage cleared. You can now try opening the main app.');
+        }
+        
+        function openMainApp() {
+            window.open('http://localhost:3005', '_blank');
+        }
+        
+        async function startRPA() {
+            const serviceNumber = document.getElementById('serviceNumber').value;
+            const tNumber = document.getElementById('tNumber').value;
+            const mobile = document.getElementById('mobile').value;
+            const email = document.getElementById('email').value;
+            
+            if (!serviceNumber || !tNumber || !mobile || !email) {
+                updateStatus('❌ Please fill all fields', true);
+                return;
+            }
+            
+            updateStatus('🤖 Starting RPA automation... Chrome should open soon...');
+            
+            const testData = {
+                city: "Ahmedabad",
+                service_number: serviceNumber,
+                t_number: tNumber,
+                mobile: mobile,
+                email: email,
+                old_name: "John Doe",
+                new_name: "John Smith"
+            };
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/torrent-automation/start-automation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    updateStatus(`🎉 RPA started successfully! Check Chrome browser. Response: ${JSON.stringify(result)}`);
+                } else {
+                    const error = await response.text();
+                    updateStatus(`❌ RPA failed: ${error}`, true);
+                }
+            } catch (error) {
+                updateStatus(`🕐 RPA request sent (timeout expected). Check if Chrome opened!`);
+            }
+        }
+        
+        function stopRPA() {
+            updateStatus('⏹️ RPA stop requested (close Chrome browser manually)');
+        }
+        
+        // Auto-test backend on page load
+        window.onload = function() {
+            testBackend();
+        };
+    </script>
+</body>
+</html>
